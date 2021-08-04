@@ -2,20 +2,21 @@
 Transport HDF5 Image Format
 --------------------------------------------------------------------------
 
-/       Group
+Group: /
 --------------------------------------------------------------------------
 
 Top level group. The version number attribute indicates the release number 
 of this file format.
 
-    +-----------+------+---------+
-    | Attribute | Type | Example |
-    +===========+======+=========+
-    | version   | long | 1       |
-    +-----------+------+---------+
++-----------+------+---------+
+| Attribute | Type | Example |
++===========+======+=========+
+| version   | long | 1       |
++-----------+------+---------+
 
 
-/image  Dataset (height, width), unsigned int
+
+Dataset: /image (height, width), unsigned int
 --------------------------------------------------------------------------
 
 This dataset is a two-dimensional array of the CCD pixel values read from 
@@ -23,57 +24,93 @@ camera sensor. The attributes encompass the metadata values when the
 image was taken. The units for the metadata attributes can be found in 
 the /units group.
 
-    +-----------------+--------+--------------+
-    | Attribute       | Type   | Example      |
-    +=================+========+==============+
-    | bin_x           | long   | 2            |
-    | bin_y           | long   | 2            |
-    | bytes_per_pixel | long   | 2            |
-    | ccd_temp        | double | -4.71        |
-    | device_name     | string | "Atik 414ex" |
-    | exposure_time   | double | 1            |
-    | height          | long   | 519          |
-    | image_bytes     | long   | 721410       |
-    | label           | string | "Red line"   |
-    | latitude        | double | 37.4545      |
-    | longitude       | double | -122.176     |
-    | serialnum       | long   | 520          |
-    | set_point       | double | -5           |
-    | start_time      | long   | 1627413300   |
-    | station         | string | "cfs"        |
-    | version         | long   | 2            |
-    | width           | long   | 695          |
-    | x               | long   | 0            |
-    | y               | long   | 0            |
-    +-----------------+--------+--------------+
++-----------------+--------+--------------+
+| Attribute       | Type   | Example      |
++=================+========+==============+
+| bin_x           | long   | 2            |
++-----------------+--------+--------------+
+| bin_y           | long   | 2            |
++-----------------+--------+--------------+
+| bytes_per_pixel | long   | 2            |
++-----------------+--------+--------------+
+| ccd_temp        | double | -4.71        |
++-----------------+--------+--------------+
+| device_name     | string | "Atik 414ex" |
++-----------------+--------+--------------+
+| exposure_time   | double | 1            |
++-----------------+--------+--------------+
+| height          | long   | 519          |
++-----------------+--------+--------------+
+| image_bytes     | long   | 721410       |
++-----------------+--------+--------------+
+| label           | string | "Red line"   |
++-----------------+--------+--------------+
+| latitude        | double | 37.4545      |
++-----------------+--------+--------------+
+| longitude       | double | -122.176     |
++-----------------+--------+--------------+
+| serialnum       | long   | 520          |
++-----------------+--------+--------------+
+| set_point       | double | -5           |
++-----------------+--------+--------------+
+| start_time      | long   | 1627413300   |
++-----------------+--------+--------------+
+| station         | string | "cfs"        |
++-----------------+--------+--------------+
+| version         | long   | 2            |
++-----------------+--------+--------------+
+| width           | long   | 695          |
++-----------------+--------+--------------+
+| x               | long   | 0            |
++-----------------+--------+--------------+
+| y               | long   | 0            |
++-----------------+--------+--------------+
 
 
-/units  Group
+Group: /units
 --------------------------------------------------------------------------
 
 Units catalog for the metadata values associated with each image.
 
-    +-----------------+--------+----------------------+
-    | Attribute       | Type   | Value                |
-    +=================+========+======================+
-    | bin_x           | string | pixels               |
-    | bin_y           | string | pixels               |
-    | bytes_per_pixel | string | bytes                |
-    | ccd_temp        | string | degrees C            |
-    | device_name     | string | -                    |
-    | exposure_time   | string | seconds              |
-    | height          | string | pixels               |
-    | image_bytes     | string | bytes                |
-    | label           | string | -                    |
-    | latitude        | string | degrees N            |
-    | longitude       | string | degrees E            |
-    | serialnum       | string | -                    |
-    | set_point       | string | degrees C            |
-    | start_time      | string | Unix timestamp (UTC) |
-    | station         | string | -                    |
-    | version         | string | -                    |
-    | width           | string | pixels               |
-    | x               | string | pixels               |
-    | y               | string | pixels               |
-    +-----------------+--------+----------------------+
++-----------------+--------+----------------------+
+| Attribute       | Type   | Value                |
++=================+========+======================+
+| bin_x           | string | pixels               |
++-----------------+--------+----------------------+
+| bin_y           | string | pixels               |
++-----------------+--------+----------------------+
+| bytes_per_pixel | string | bytes                |
++-----------------+--------+----------------------+
+| ccd_temp        | string | degrees C            |
++-----------------+--------+----------------------+
+| device_name     | string | -                    |
++-----------------+--------+----------------------+
+| exposure_time   | string | seconds              |
++-----------------+--------+----------------------+
+| height          | string | pixels               |
++-----------------+--------+----------------------+
+| image_bytes     | string | bytes                |
++-----------------+--------+----------------------+
+| label           | string | -                    |
++-----------------+--------+----------------------+
+| latitude        | string | degrees N            |
++-----------------+--------+----------------------+
+| longitude       | string | degrees E            |
++-----------------+--------+----------------------+
+| serialnum       | string | -                    |
++-----------------+--------+----------------------+
+| set_point       | string | degrees C            |
++-----------------+--------+----------------------+
+| start_time      | string | Unix timestamp (UTC) |
++-----------------+--------+----------------------+
+| station         | string | -                    |
++-----------------+--------+----------------------+
+| version         | string | -                    |
++-----------------+--------+----------------------+
+| width           | string | pixels               |
++-----------------+--------+----------------------+
+| x               | string | pixels               |
++-----------------+--------+----------------------+
+| y               | string | pixels               |
++-----------------+--------+----------------------+
 
