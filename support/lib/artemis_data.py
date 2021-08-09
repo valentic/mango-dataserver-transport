@@ -190,7 +190,7 @@ if __name__ == '__main__':
     
         for k,v in snapshot.metadata.items():
             print('%20s: %s %s' % (k, v, UnitsCatalog[k]))
-        print('%20s: %s' % (snapshot.pixels.shape))
+        print('%20s: %s' % ('Shape',snapshot.pixels.shape))
         print('-'*70)
 
         print('Saving snapshot as HDF5')
