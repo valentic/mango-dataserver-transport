@@ -17,6 +17,12 @@
 #   2021-07-30  Todd Valentic
 #               Add write_png
 #
+#   2021-08-12  Todd Valentic
+#               Support v3 records
+#
+#   2022-02-06  Todd Valentic
+#               Fix error in saving exposure_time 
+#
 ##########################################################################
 
 import bz2
@@ -42,6 +48,7 @@ UnitsCatalog = dict(
     serialnum           = '', 
     device_name         = '', 
     label               = '', 
+    instrument          = '',
     exposure_time       = 'seconds',
     x                   = 'pixels', 
     y                   = 'pixels', 
@@ -62,6 +69,9 @@ class Snapshot:
 
         self.metadata = {}
         self.image = None
+
+        if 'metadata' in kw:
+            self.metadata.update(kw['metadata'])
 
         version = struct.unpack_from('!B',rawdata)[0]
         parser = 'parse_version_%d' % version
@@ -85,6 +95,7 @@ class Snapshot:
             serialnum           = values[5],
             device_name         = as_str(values[6]),
             label               = '', 
+            instrument          = '',
             exposure_time       = values[7],
             x                   = values[8],
             y                   = values[9],
@@ -114,6 +125,7 @@ class Snapshot:
             serialnum           = values[5],
             device_name         = as_str(values[6]),
             label               = as_str(values[7]),
+            instrument          = '', 
             exposure_time       = values[8],
             x                   = values[9],
             y                   = values[10],
@@ -128,6 +140,37 @@ class Snapshot:
             )
 
         self.pixels = self.parse_pixels(rawdata, self.metadata, header_fmt)
+
+    def parse_version_3(self, rawdata):
+
+        header_fmt = '!Bi40s2fi40s40s40sf7i2fi'
+        values = struct.unpack_from(header_fmt, rawdata)
+
+        self.metadata = dict(
+            version             = values[0],
+            start_time          = values[1],
+            station             = as_str(values[2]),
+            latitude            = values[3],
+            longitude           = values[4],
+            serialnum           = values[5],
+            device_name         = as_str(values[6]),
+            label               = as_str(values[7]),
+            instrument          = as_str(values[8]),
+            exposure_time       = values[9],
+            x                   = values[10],
+            y                   = values[11],
+            width               = values[12],
+            height              = values[13],
+            bytes_per_pixel     = values[14],
+            bin_x               = values[15],
+            bin_y               = values[16],
+            ccd_temp            = values[17],
+            set_point           = values[18],
+            image_bytes         = values[19],
+            )
+
+        self.pixels = self.parse_pixels(rawdata, self.metadata, header_fmt)
+
 
     def parse_pixels(self, rawdata, metadata, header_fmt):
 
@@ -167,6 +210,10 @@ class Snapshot:
 def read(filename, *pos, **kw):
 
     # Camera files are one image per file.
+    # Parse instrument name from filename for v1 and v2 records
+    # Assumes format is: mango-low-greenline-20210813-042400.png
+
+    #instrument = filename.split('-')[
 
     rawdata = open(filename).read()
 
