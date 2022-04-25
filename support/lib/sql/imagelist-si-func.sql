@@ -16,13 +16,15 @@ SELECT
     --station.name as "station",
     --instrument.name as "instrument",
     --image.timestamp as "timestamp",
+    --grp,
     CONCAT_WS('/',
         '/data/transport/mango/archive',
         station.name,
         instrument.name,
+        'raw',
         to_char(image.timestamp,'YYYY/DDD/HH24'),
         'mango-'||station.name||'-'||instrument.name||'-'||
-            to_char(image.timestamp,'YYYYMMDD-HH24MISS.png')
+            to_char(image.timestamp,'YYYYMMDD-HH24MISS')||'.hdf5'
         ) as "filename"
 FROM
     stationinstrument
@@ -42,18 +44,20 @@ FROM
             grp
         FROM (
             SELECT 
-                image.timestamp,
-                sum( (image.timestamp >= prev_timestamp + interval '3 hours')::int ) over (order by image.timestamp) as grp
+                timestamp,
+                sum( (timestamp >= prev_timestamp + interval '3 hours')::int ) over (order by timestamp) as grp
                 FROM (SELECT image.*,
-                             lag(image.timestamp, 1, image.timestamp) over (order by image.timestamp) as prev_timestamp
+                             lag(timestamp, 1, timestamp) over (order by timestamp) as prev_timestamp
                       FROM image
                       WHERE stationinstrument_id=stationinstrument.id
                       ) image
                 WHERE 
-                    date_trunc('day', image.timestamp) between 
-                        _targetday-interval '1 day' and _targetday
-                ORDER BY image.timestamp 
+                    date_trunc('day', timestamp) between _targetday and _targetday+interval '1 day'
+                ORDER BY 
+                    timestamp 
             ) imagegap 
+        WHERE
+            grp=1
         ORDER BY
             grp desc
         ) as image ON TRUE

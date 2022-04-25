@@ -10,6 +10,9 @@
 #   2022-04-13  Todd Valentic
 #               Add StationInstrument table 
 #
+#   2022-04-21	Todd Valentic
+#		        Add QuicklookMovie table
+#
 ###########################################################################
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -128,6 +131,9 @@ class StationInstrument(Base):
     station_id      = Column(Integer, ForeignKey('station.id'))
     instrument_id   = Column(Integer, ForeignKey('instrument.id'))
 
+    station = relationship('Station', backref='station')
+    instrument = relationship('Instrument', backref='instrument')
+
     def __repr__(self):
         return '<StationInstrument %s (station %s, instrument %s)>' % \
             (self.id, self.station_id, self.instrument_id)
@@ -167,6 +173,22 @@ class Image(Base):
 
     def __repr__(self):
         return '<Image %s %s>' % \
+            (self.timestamp,self.stationinstrument_id)
+
+class QuickLookMovie(Base):
+
+    __tablename__ = 'quicklookmovie'
+
+    id              = Column(Integer, primary_key=True)
+    timestamp       = Column(DateTime(timezone=True))
+    stationinstrument_id = Column(Integer, ForeignKey('stationinstrument.id'))
+
+    __table_args__ = (
+        Index('quicklookmovie_stationinstrument_id_timestamp_idx',stationinstrument_id,timestamp),
+    )
+
+    def __repr__(self):
+        return '<QuickLookMovie %s %s>' % \
             (self.timestamp,self.stationinstrument_id)
 
 #------------------------------------------------------------------------------

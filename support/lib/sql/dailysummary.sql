@@ -36,7 +36,7 @@ FROM
                       ) image
                 WHERE 
                     date_trunc('day', timestamp) between 
-                        (date :'date')-interval '1 day' and (date :'date')
+                        (date :'date') and (date :'date')+interval '1 day'
                 ORDER BY timestamp 
             ) subimage 
         GROUP BY

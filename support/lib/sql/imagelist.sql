@@ -8,6 +8,7 @@ SELECT
         '/data/transport/mango/archive',
         station.name,
         instrument.name,
+        'raw',
         to_char(timestamp,'YYYY/DDD/HH24'),
         'mango-'||station.name||'-'||instrument.name||'-'||
             to_char(timestamp,'YYYYMMDD-HH24MISS.png')
@@ -39,7 +40,7 @@ FROM
                       ) image
                 WHERE 
                     date_trunc('day', timestamp) between 
-                        (date :'targetday')-interval '1 day' and (date :'targetday')
+                        (date :'targetday') and (date :'targetday')+interval '1 day'
                 ORDER BY timestamp 
             ) imagegap 
         ORDER BY
