@@ -7,6 +7,9 @@
 #   2022-04-14  Todd Valentic
 #               Initial implementation
 #
+#   2022-05-23  Todd Valentic
+#               Handle situation where site has no images 
+#
 ##########################################################################
 
 from Transport import ProcessClient
@@ -152,6 +155,20 @@ class ProcessRaw (ProcessClient):
             self.log.error('output: %s' % output)
             return False
 
+        match = dict(timestamp=timestamp, stationinstrument_id=camera.id)
+        movie = model.QuickLookMovie.query.filter_by(**match).first()
+
+        if not movie:
+            movie = model.QuickLookMovie(**match)
+            model.add(movie)
+
+            try:
+                model.commit()
+            except:
+                self.log.exception('Problem update database')
+                model.rollback()
+                return False
+
         self.tracker.put(camera, timestamp, len(filelist))
 
         return True
@@ -171,8 +188,10 @@ class ProcessRaw (ProcessClient):
         timestamp = None
 
         if not lasttime:
-            timestamp = self.get_first_image(camera).timestamp
-            self.log.debug('No history, start with %s' % timestamp.date())
+            image = self.get_first_image(camera) 
+            if image:
+                timestamp = image.timestamp
+                self.log.debug('No history, start with %s' % timestamp.date())
         else:
             lastlist = self.get_file_list(camera, lasttime) 
 
@@ -200,6 +219,14 @@ class ProcessRaw (ProcessClient):
         return True 
 
     def process(self):
+        try:
+            self._process()
+        except:
+            self.log.exception('Problem detected while processing')
+            if self.exitOnError:
+                self.abort('Exiting on error')
+
+    def _process(self):
 
         self.log.info('Processing start')
 
@@ -232,10 +259,7 @@ class ProcessRaw (ProcessClient):
         self.schedule_task(self.schedule_at, self.process)
 
         while self.wait(1):
-            try:
-                self.scheduler.run_pending()
-            except:
-                self.log.exception('Error detected')
+            self.scheduler.run_pending()
 
         self.log.info('Exiting')
 
