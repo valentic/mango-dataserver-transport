@@ -12,17 +12,13 @@
 #
 ##########################################################################
 
-from Transport import ProcessClient
-from Transport.Util import PatternTemplate 
-from sqlalchemy import desc
+from quicklook_base import QuicklookBase
 
 import sys
 import schedule
-import commands 
 import fnmatch
 import ConfigParser
 import datetime
-import commands
 
 import model
 
@@ -76,111 +72,20 @@ class DateTracker:
 
         self.save()
 
-class ProcessRaw (ProcessClient):
+class QuicklookDaily (QuicklookBase):
 
     def __init__(self, argv):
-        ProcessClient.__init__(self,argv)
-
-        try:
-            self.init()
-        except:
-            self.log.exception('Error')
+        QuicklookBase.__init__(self, argv)
 
     def init(self):
+        QuicklookBase.init(self)
 
         self.scheduler      = schedule.Scheduler()
         self.tracker        = DateTracker('tracker.ini', self.log)
         self.schedule_at    = self.get('schedule.at','17:00:00')
-        self.movie_cmd      = self.get('task.cmd')
-        self.formats        = self.getList('formats','mp4')
-        self.exitOnError    = self.getboolean('exitOnError',False)
-        self.runAtStart     = self.getboolean('runAtStart',False)
-
-        self.replaceStation     = PatternTemplate('station')
-        self.replaceInstrument  = PatternTemplate('instrument')
-        self.replaceFilelist    = PatternTemplate('filelist')
-        self.replaceExt         = PatternTemplate('ext')
-
-        self.replaceFilelist.setValue('filelist')
-
-    def get_file_list(self, camera, date):
-
-        station = camera.station.name
-        instrument = camera.instrument.name
-
-        engine = model.Base.metadata.bind
-        sql = "select * from imagelist('%s','%s','%s');" % (station, instrument, date)
-
-        filelist = [row[0] for row in engine.execute(sql).all()]
-
-        return filelist
-
-    def get_first_image(self, camera):
-        
-        query = model.Image.query.filter_by(stationinstrument_id=camera.id)
-        query = query.order_by(model.Image.timestamp)
-        image = query.first()
-
-        return image 
-
-    def find_next_image(self, camera, timestamp):
-        Image = model.Image
-        nextday = timestamp.date() + datetime.timedelta(days=1)
-        query = Image.query.filter(Image.stationinstrument_id==camera.id, Image.timestamp>=nextday)
-        query = query.order_by(Image.timestamp)
-        image = query.first()
-
-        return image
-
-    def make_movie(self, camera, timestamp, ext):
-        filelist = self.get_file_list(camera, timestamp) 
-
-        with open('filelist','w') as f:
-            f.write('\n'.join(filelist))
-
-        cmd = self.replaceFilelist(self.movie_cmd) 
-        cmd = self.replaceStation(cmd, camera.station.name)
-        cmd = self.replaceInstrument(cmd, camera.instrument.name)
-        cmd = self.replaceExt(cmd, ext)
-        cmd = timestamp.strftime(cmd)
-
-        self.log.debug('Running %s' % cmd)
-
-        status, output = commands.getstatusoutput(cmd)
-
-        if status != 0:
-            self.log.error('Problem running cmd')
-            self.log.error('cmd: %s' % cmd)
-            self.log.error('status: %s' % status)
-            self.log.error('output: %s' % output)
-            return False
-
-        match = dict(timestamp=timestamp, stationinstrument_id=camera.id)
-        movie = model.QuickLookMovie.query.filter_by(**match).first()
-
-        if not movie:
-            movie = model.QuickLookMovie(**match)
-            model.add(movie)
-
-            try:
-                model.commit()
-            except:
-                self.log.exception('Problem update database')
-                model.rollback()
-                return False
-
-        self.tracker.put(camera, timestamp, len(filelist))
-
-        return True
-
-    def make_movies(self, camera, timestamp, formats):
-        
-        for ext in formats:
-            self.log.info('      %s' % ext)
-            if not self.make_movie(camera, timestamp, ext):
-                return False
-
-        return True
+        self.runAtStart     = self.getboolean('runAtStart', False)
+        self.exitOnError    = self.getboolean('exitOnError', False)
+        self.maxRetries     = self.getint('maxRetries',5)
 
     def process_camera(self, camera):
 
@@ -212,23 +117,37 @@ class ProcessRaw (ProcessClient):
         self.log.info('  - %s %s %s' % \
             (camera.station.name, camera.instrument.name, timestamp.date()))
 
-        if not self.make_movies(camera, timestamp, self.formats):
-            if self.exitOnError:
-                self.abort('Problem detected creating movie. Stopping')
+        num_images = self.make_movies(camera, timestamp, self.formats)
+
+        self.tracker.put(camera, timestamp, num_images) 
 
         return True 
 
     def process(self):
-        try:
-            self._process()
-        except:
-            self.log.exception('Problem detected while processing')
-            if self.exitOnError:
-                self.abort('Exiting on error')
+
+        for attempt in range(self.maxRetries):
+
+            try:    
+                self._process()
+                return
+            except:
+                model.session.rollback()
+                self.log.exception('Problem detected while processing')
+
+            if not self.running:
+                break
+
+            self.log.info('Retry %s of %s' % (attempt+1, self.maxRetries))
+
+        if self.exitOnError:
+            self.abort('Exiting on error')
+
+        raise RuntimeError('Failed to process. Out of retries')
 
     def _process(self):
 
         self.log.info('Processing start')
+        starttime = self.currentTime() 
 
         for camera in model.StationInstrument.query.all():
             while self.process_camera(camera) and self.running:
@@ -236,7 +155,7 @@ class ProcessRaw (ProcessClient):
             if not self.running:
                 break
 
-        self.log.info('Processing finished')
+        self.log_elapsed('Processing finished', starttime)
 
     def schedule_task(self, at, cmd):
 
@@ -264,5 +183,5 @@ class ProcessRaw (ProcessClient):
         self.log.info('Exiting')
 
 if __name__ == '__main__':
-    ProcessRaw(sys.argv).run()
+    QuicklookDaily(sys.argv).run()
 

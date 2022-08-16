@@ -7,6 +7,9 @@
 #   2022-03-28  Todd Valentic
 #               Initial implementation
 #
+#   2022-07-09  Todd Valentic
+#               Add atStart option
+#
 ##########################################################################
 
 from Transport  import ProcessClient, NewsPostMixin
@@ -26,6 +29,7 @@ class DailySummary (ProcessClient, NewsPostMixin):
 
         self.report_at = self.get('report.at','17:00:00')
         self.report_cmd = self.get('report.cmd')
+        self.report_at_start = self.getboolean('report.at_start',False)
 
         if not self.report_cmd:
             self.abort('No report command specified')
@@ -74,13 +78,20 @@ class DailySummary (ProcessClient, NewsPostMixin):
 
     def run(self):
 
+        self.log.info('Running')
+
         self.schedule_task(self.report_at, self.process)
+
+        if self.report_at_start:
+            self.process()
         
         while self.wait(1):
             try:
                 self.scheduler.run_pending()
             except:
                 self.log.exception('Error detected')
+
+        self.log.info('Stopping')
 
 if __name__ == '__main__':
     DailySummary(sys.argv).run()

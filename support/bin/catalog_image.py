@@ -23,10 +23,19 @@ if __name__ == '__main__':
             station = model.Station.query.filter_by(name=parts[5]).first()
             instrument = model.Instrument.query.filter_by(name=parts[6]).first()
 
+            if not station:
+                raise ValueError('No station found for %s' % filename)
+
+            if not instrument:
+                raise ValueError('No instrument found for %s' % filename)
+
             camera = model.StationInstrument.query.filter_by(
                 station_id=station.id,
                 instrument_id=instrument.id
                 ).first()
+
+            if not instrument:
+                raise ValueError('No stationinstrument found for %s' % filename)
 
             timestamp = datetime.datetime.strptime('%s %s' % (parts[8],parts[9]),'%Y %j')
             timestamp = timestamp.replace(tzinfo=pytz.utc)
