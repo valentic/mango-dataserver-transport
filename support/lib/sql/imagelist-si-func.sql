@@ -47,7 +47,7 @@ FROM
                 timestamp,
                 sum( (timestamp >= prev_timestamp + interval '3 hours')::int ) over (order by timestamp) as grp
                 FROM (SELECT image.*,
-                             lag(timestamp, 1, timestamp) over (order by timestamp) as prev_timestamp
+                             lag(timestamp, 1, timestamp - interval '1 day') over (order by timestamp) as prev_timestamp
                       FROM image
                       WHERE stationinstrument_id=stationinstrument.id
                       ) image
