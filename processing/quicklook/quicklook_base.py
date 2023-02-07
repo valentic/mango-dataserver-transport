@@ -69,7 +69,7 @@ class QuicklookBase(ProcessClient):
         instrument = camera.instrument.name
 
         engine = model.Base.metadata.bind
-        sql = "select * from imagelist('%s','%s','%s');" % (station, instrument, date)
+        sql = "select * from image_list('%s','%s','%s');" % (station, instrument, date)
 
         filelist = [row[0] for row in engine.execute(sql).all()]
 
