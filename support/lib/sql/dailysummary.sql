@@ -1,53 +1,26 @@
 -- Call as
 
+WITH summary as (
+    SELECT
+        station,
+        instrument,
+        min(timestamp) as starttime,
+        max(timestamp) as stoptime,
+        count(timestamp) as num_images
+    FROM
+        image_islands_span(now()-interval '1d', now())
+    GROUP BY
+        station, instrument, island
+)
+
 SELECT
-    station.name as "Station",
-    instrument.name as "Instrument",
-    to_char(group_start, 'YYYY-MM-DD HH24:MI:SS') as "Start Time (UTC)",
-    to_char(group_stop, 'YYYY-MM-DD HH24:MI:SS') as "Stop Time (UTC)",
-    duration as "Duration",
+    station as "Station",
+    instrument as "Instrument",
+    to_char(starttime, 'YYYY-MM-DD HH24:MI:SS') as "Start Time (UTC)",
+    to_char(stoptime, 'YYYY-MM-DD HH24:MI:SS') as "Stop Time (UTC)",
+    stoptime - starttime as "Duration",
     num_images as "Num Images"
 FROM
-    stationinstrument
-    JOIN
-        station on station.id = stationinstrument.station_id
-    JOIN
-        instrument on instrument.id = stationinstrument.instrument_id
-    JOIN
-        system_model on system_model.id=station.model_id
-    JOIN
-        status on status.id=station.status_id
-    LEFT JOIN LATERAL (
-        SELECT  
-            grp,
-            min(timestamp) as "group_start",
-            max(timestamp) as "group_stop",
-            count(timestamp) as "num_images",
-            max(timestamp)-min(timestamp) as "duration"
-        FROM (
-            SELECT 
-                image.timestamp,
-                sum( (timestamp >= prev_timestamp + interval '3 hours')::int ) over (order by timestamp) as grp
-                FROM (SELECT image.*,
-                             lag(timestamp, 1, timestamp) over (order by timestamp) as prev_timestamp
-                      FROM image
-                      WHERE
-                        stationinstrument_id=stationinstrument.id
-                      ) image
-                WHERE 
-                    date_trunc('day', timestamp) between 
-                        (date :'date') and (date :'date')+interval '1 day'
-                ORDER BY timestamp 
-            ) subimage 
-        GROUP BY
-            grp
-        ORDER BY
-            grp desc
-        LIMIT 1
-        ) as image ON TRUE
-WHERE
-    status.name='active'
-    AND
-    system_model.name='mcs'
+    summary 
 ORDER BY
-    station.name,instrument.name
+    station, instrument
