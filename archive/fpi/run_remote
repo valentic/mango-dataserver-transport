@@ -1,0 +1,112 @@
+#!/bin/bash
+
+##########################################################################
+#
+#   Remote command runner
+#
+#   Run a set of commands in a shell on a remote machine. The SSH config
+#   (host, username, etc) are listed in the ssh config file. The commands
+#   are given in a separate file.
+#
+#   2023-02-08  Todd Valentic
+#               Initial implementation
+#
+##########################################################################
+
+set -o errexit      # abort on nonzero exit status
+set -o nounset      # abort on unbound variable
+set -o pipefail     # do not hide errors within pipes
+
+VERSION=1.0.0
+
+#-------------------------------------------------------------------------
+# Usage function
+#-------------------------------------------------------------------------
+
+function usage()
+{
+    cat << EOF
+
+    Usage: $progname [options] host cmdfile
+
+    Optional arguments:
+        -h, --help          show this help message
+        -V, --version       $progname version
+        -v, --verbose       increase the verbosity (can be applied multiple times)
+        -c, --config        SSH config file
+
+EOF
+}
+
+#-------------------------------------------------------------------------
+# Initialize variables
+#-------------------------------------------------------------------------
+
+progname=$(basename $0)
+verbose=0
+host=
+cmdfile=
+sshopts=()
+
+#-------------------------------------------------------------------------
+# Parse command line 
+#-------------------------------------------------------------------------
+
+OPTS=$(getopt -o "hVvc:" --long "help,version,verbose,config:" -n "$progname" -- "$@")
+if [ $? != 0 ]; then echo "Error in command line arguments." >&2 ; usage; exit 1 ; fi
+eval set -- "$OPTS"
+
+while true; do
+    # uncomment the next line to see how the shift is working
+    #echo "\$1:\"$1\" \$2:\"$2\""
+    case "$1" in
+        -h | --help )       usage; exit ;;
+        -V | --version )    echo $VERSION; exit ;;
+        -v | --verbose )    verbose=$((verbose + 1)); shift ;;
+        -c | --config )     sshopts+=( "-F $2"); shift 2 ;; 
+        -- )                shift; break ;;
+        * )                 break ;;
+    esac
+done
+
+if [ $# -lt 2 ]; then
+    usage
+    exit 1
+fi
+
+host=$1
+cmdfile=$2
+
+if (( $verbose > 1 )); then
+    sshopts+=( '-v' )
+fi
+
+# Expand the sshopts array into a string. Note that bash < 4.4 will raise an error
+# if the array is empty. To work around and support older versions of bash, use this
+# expansion as detailed in this SO posting:
+# https://stackoverflow.com/questions/7577052/bash-empty-array-expansion-with-set-u
+
+sshopts=${sshopts[@]+"${sshopts[@]}"}
+
+if (( $verbose > 0 )); then
+    cat << EOF
+Parameters:    
+    versbose=$verbose
+    sshopts=$sshopts
+    host=$host
+    cmdfile=$cmdfile
+
+EOF
+fi
+
+if [ ! -f $cmdfile ]; then
+    echo "The cmdfile was not found: $cmdfile"
+    exit 1
+fi
+
+#=========================================================================
+# Main application
+#=========================================================================
+
+cat $cmdfile | ssh $sshopts $host /bin/bash
+

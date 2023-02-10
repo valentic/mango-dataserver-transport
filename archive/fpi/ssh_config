@@ -1,0 +1,9 @@
+Host fpi
+    Hostname remote2.ece.illinois.edu
+    User airglow
+    IdentitiesOnly yes
+    IdentityFile /opt/transport/groups/mango/support/keys/mangodasi-ed25519
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
+

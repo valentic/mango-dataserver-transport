@@ -192,12 +192,34 @@ class QuickLookMovie(Base):
             (self.timestamp,self.stationinstrument_id)
 
 #------------------------------------------------------------------------------
+# FPI Movies 
+#------------------------------------------------------------------------------
+
+class CombinedMovie(Base):
+    
+    __tablename__ = 'combinedmovie'
+
+    id              = Column(Integer, primary_key=True)
+    timestamp       = Column(DateTime(timezone=True))
+    instrument_id   = Column(Integer, ForeignKey('instrument.id'))
+    src_filename    = Column(String)
+    src_modtime     = Column(Integer)
+    src_filesize    = Column(Integer)
+
+    __table_args__ = (
+        Index('combinedmovie_timestamp_idx',timestamp),
+    )
+
+    def __repr__(self):
+        return '<CombinedMovie %s >' % self.timestamp
+
+#------------------------------------------------------------------------------
 # System 
 #------------------------------------------------------------------------------
 
 class Server(Base):
 
-    __tablename__ = 'servers'
+    __tablename__ = 'server'
 
     id          = Column(Integer, primary_key=True)
     station_id  = Column(Integer, ForeignKey('station.id'))
@@ -303,79 +325,4 @@ class FilesystemData(Base):
     usedpct         = Column(Float)
 
     __table_args__ = (Index('filesystem_data_filesystem_id_timestamp_idx','filesystem_id','timestamp'),)
-
-#------------------------------------------------------------------------------
-#  Network
-#------------------------------------------------------------------------------
-
-class IPAccountHost(Base):
-
-    __tablename__ = 'ipaccount_hosts'
-
-    id          = Column(Integer, primary_key=True)
-    server_id   = Column(Integer,ForeignKey('server.id'))
-    name        = Column(String)
-    ipaddr      = Column(String)
-
-    def __repr__(self):
-        return '<IPAccountHost [%s] %s>' % (self.id,self.name)
-
-    __table_args__ = (
-        UniqueConstraint('server_id','name'),
-        )
-
-class IPAccountData(Base):
-
-    __tablename__ = 'ipaccount_data'
-
-    id          = Column(Integer, primary_key=True)
-    timestamp   = Column(DateTime(timezone=True))
-    host_id     = Column(Integer,ForeignKey('ipaccount_hosts.id'))
-    bytesin     = Column(Integer)
-    bytesout    = Column(Integer)
-
-    def __repr__(self):
-        return '<IPAccount %s %s>' % (self.host_id,self.timestamp)
-
-    __table_args__ = (Index('ipaccount_data_host_id_timestamp_idx','host_id','timestamp'),)
-
-class PingHost(Base):
-
-    __tablename__ = 'ping_hosts'
-
-    id          = Column(Integer, primary_key=True)
-    name        = Column(String, unique=True)
-
-    def __repr__(self):
-        return '<PingHost [%s] %s>' % (self.id,self.name)
-
-class PingPair(Base):
-
-    __tablename__ = 'ping_pairs'
-
-    id          = Column(Integer, primary_key=True)
-    host_id     = Column(Integer, ForeignKey('ping_hosts.id'))
-    server_id   = Column(Integer, ForeignKey('server.id'))
-
-    def __repr__(self):
-        return '<PingPair[%d] %s %s>' % (self.id,self.host_id,self.server_id)
-
-class PingData(Base):
-
-    __tablename__ = 'ping_data'
-
-    id          = Column(Integer, primary_key=True)
-    pair_id     = Column(Integer, ForeignKey('ping_pairs.id'),nullable=False, index=True)
-    timestamp   = Column(DateTime(timezone=True),nullable=False)
-    mdev        = Column(Float)
-    maxrtt      = Column(Float)
-    minrtt      = Column(Float)
-    avgrtt      = Column(Float)
-    loss        = Column(Float)
-
-    def __repr__(self):
-        return '<PingData [%d] %s %s %s>' % (self.id,self.timestamp,self.pair_id)
-
-    __table_args__ = ( Index('ping_data_pair_id_timestamp_idx','pair_id','timestamp'),)
-
 

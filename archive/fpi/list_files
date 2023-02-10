@@ -1,0 +1,2 @@
+DATADIR=scratch_data/DASI_Data
+find $DATADIR -maxdepth 1 -name '*mp4' -exec stat -c "%Y %s %n" '{}' ';' | sort
