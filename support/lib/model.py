@@ -192,26 +192,38 @@ class QuickLookMovie(Base):
             (self.timestamp,self.stationinstrument_id)
 
 #------------------------------------------------------------------------------
-# FPI Movies 
+# Fusion Products 
 #------------------------------------------------------------------------------
 
-class CombinedMovie(Base):
+class FusionProduct(Base):
+
+    __tablename__ = 'fusionproduct'
+
+    id          = Column(Integer, primary_key=True)
+    name        = Column(String, unique=True)
+    label       = Column(String)
+
+    def __repr__(self):
+        return '<FusionProduct %s (%s)>' % (self.name,self.id)
+
+class FusionData(Base):
     
-    __tablename__ = 'combinedmovie'
+    __tablename__ = 'fusiondata'
 
     id              = Column(Integer, primary_key=True)
     timestamp       = Column(DateTime(timezone=True))
-    instrument_id   = Column(Integer, ForeignKey('instrument.id'))
+    product_id      = Column(Integer, ForeignKey('fusionproduct.id'))
+
     src_filename    = Column(String)
     src_modtime     = Column(Integer)
     src_filesize    = Column(Integer)
 
     __table_args__ = (
-        Index('combinedmovie_timestamp_idx',timestamp),
+        Index('fusiondata_fusionproduct_timestamp_idx',product_id, timestamp),
     )
 
     def __repr__(self):
-        return '<CombinedMovie %s >' % self.timestamp
+        return '<FustionData %s %s >' % (self.product_id, self.timestamp)
 
 #------------------------------------------------------------------------------
 # System 

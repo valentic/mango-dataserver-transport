@@ -2,10 +2,15 @@
 
 ##########################################################################
 #
-#   Fetch new FPI/MANGO movies 
+#   Sync remote data products:
+#
+#       - FPI/Mango winds
 #
 #   2023-02-08  Todd Valentic
 #               Initial implementation
+#
+#   2023-02-10  Todd Valentic
+#               Refactor database/output file naming
 #
 ##########################################################################
 
@@ -23,7 +28,9 @@ from Transport import ProcessClient
 from Transport.Util import PatternTemplate
 from Transport.Util import datefunc
 
-class Movie:
+class DataFile:
+
+    # TBD - expand to be a factory for multiple data products
 
     def __init__(self, entry):
 
@@ -31,57 +38,52 @@ class Movie:
 
         self.src_modtime, self.src_filesize, self.src_filename = entry.split()
 
-        # src filenames are in the form DASI_<date>_<inst>.mp4
+        # src filenames are in the form DASI_<date>_<prod>.mp4
         # <date> - YYYYmmdd
-        # <inst> - green or red
+        # <prod> - green or red
         # Example: DASI_20230206_green.mp4
 
         pattern = ".*DASI_([0-9]+)_([a-z]+).mp4"
-        namemap = dict(green='greenline', red='redline')
+        namemap = dict(green='winds-greenline', red='winds-redline')
 
         datestr, namekey = re.match(pattern, self.src_filename).groups()
 
         self.timestamp = datefunc.strptime(datestr, '%Y%m%d', tzinfo=pytz.utc)
-        self.instrument = self._lookup_instrument(namemap[namekey])
+        self.product = self._lookup_product(namemap[namekey])
 
-    def _lookup_instrument(self, name):
-        return model.Instrument.query.filter_by(name=name).first()
+    def _lookup_product(self, name):
+        match = dict(name=name)
+        return model.FusionProduct.query.filter_by(**match).first()
 
-    def _lookup_movie(self, timestamp, instrument):
-        match = dict(timestamp=timestamp, instrument_id=instrument.id)
-        movie = model.CombinedMovie.query.filter_by(**match).first()
-
-        return movie
+    def _lookup_datafile(self, timestamp, product):
+        match = dict(timestamp=timestamp, product_id=product.id)
+        return model.FusionData.query.filter_by(**match).first()
 
     def is_valid(self):
 
         match = dict(
             timestamp = self.timestamp,
-            instrument_id = self.instrument.id,
+            product_id = self.product.id,
             src_filesize = self.src_filesize,
             src_filename = self.src_filename,
             src_modtime = self.src_modtime
             )
 
-        entry = model.CombinedMovie.query.filter_by(**match).first()
+        instance = model.FusionData.query.filter_by(**match).first()
 
-        return entry is not None
+        return instance is not None
 
     def update_db(self):
 
         match = dict(   
             timestamp = self.timestamp,
-            instrument_id = self.instrument.id,
+            product_id = self.product.id,
             )
 
-        instance = model.CombinedMovie.query.filter_by(**match).first()
+        instance = model.FusionData.query.filter_by(**match).first()
 
         if not instance:    
-            values = dict(
-                timestamp = self.timestamp,
-                instrument_id = self.instrument.id
-                )
-            instance = model.CombinedMovie(**values)
+            instance = model.FusionData(**match)
             model.add(instance)
 
         instance.src_filesize = self.src_filesize
@@ -119,7 +121,7 @@ class Fetcher(ProcessClient):
         self.exit_on_error = self.getboolean('exitOnError', False)
 
         self.replaceFilename = PatternTemplate('filename','.')
-        self.replaceInstrument = PatternTemplate('instrument','.')
+        self.replaceProduct = PatternTemplate('product')
 
         self.log.info('Scan cmd: %s' % self.scan_cmd)
         self.log.info('Fetch cmd: %s' % self.fetch_cmd)
@@ -141,11 +143,11 @@ class Fetcher(ProcessClient):
 
         self.log.info('Saving checksum')
 
-    def download(self, movie):
+    def download(self, datafile):
 
         self.log.info('  downloading')
         
-        cmd = self.replaceFilename(self.fetch_cmd, movie.src_filename)
+        cmd = self.replaceFilename(self.fetch_cmd, datafile.src_filename)
 
         status, output = commands.getstatusoutput(cmd)
 
@@ -155,17 +157,17 @@ class Fetcher(ProcessClient):
             self.log.error('  status: %s' % status)
             self.log.error('  output: %s' % output)
 
-            raise IOError('Failed to download %s' % movie.src_filename)
+            raise IOError('Failed to download %s' % datafile.src_filename)
 
-    def copy_to_archive(self, movie):
+    def copy_to_archive(self, datafile):
 
-        destname = movie.timestamp.strftime(self.output_name)
-        destname = self.replaceFilename(destname, os.path.basename(movie.src_filename))
-        destname = self.replaceInstrument(destname, movie.instrument.name)
+        destname = datafile.timestamp.strftime(self.output_name)
+        destname = self.replaceFilename(destname, os.path.basename(datafile.src_filename))
+        destname = self.replaceProduct(destname, datafile.product.name)
 
         self.log.info('  copy to archive: %s' % destname)
 
-        srcname = os.path.basename(movie.src_filename)
+        srcname = os.path.basename(datafile.src_filename)
 
         dirname = os.path.dirname(destname)
 
@@ -194,13 +196,13 @@ class Fetcher(ProcessClient):
     
         for entry in output:
 
-            movie = Movie(entry)
+            datafile = DataFile(entry)
 
-            if not movie.is_valid():
-                self.log.info(movie.src_filename)
-                self.download(movie) 
-                self.copy_to_archive(movie)
-                movie.update_db()
+            if not datafile.is_valid():
+                self.log.info(datafile.src_filename)
+                self.download(datafile)
+                self.copy_to_archive(datafile)
+                datafile.update_db()
 
             if not self.running:
                 return 
@@ -222,3 +224,4 @@ class Fetcher(ProcessClient):
 
 if __name__ == '__main__':
     Fetcher(sys.argv).run() 
+
