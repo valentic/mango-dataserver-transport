@@ -12,6 +12,9 @@
 #   2023-02-10  Todd Valentic
 #               Refactor database/output file naming
 #
+#   2023-02-14  Todd Valentic
+#               Add transcoding for webm
+#
 ##########################################################################
 
 import hashlib
@@ -95,7 +98,7 @@ class DataFile:
         except:
             model.rollback()
             raise
-
+    
 class Fetcher(ProcessClient):
     
     def __init__(self, argv):
@@ -176,7 +179,30 @@ class Fetcher(ProcessClient):
 
         shutil.copyfile(srcname, destname)
 
+        self.transcode(destname)
+
         os.remove(srcname)
+
+    def transcode(self, filename):
+
+        if not filename.endswith('mp4'):
+            return
+
+        self.log.info('  transcode')
+
+        destname = filename.replace('.mp4', '.webm')
+
+        cmd = 'ffmpeg -y -hide_banner -loglevel error -i %s -c:v libvpx-vp9 -crf 30 -b:v 0 -b:a 128k -c:a libopus %s' % (filename, destname)
+
+        status, output = commands.getstatusoutput(cmd)
+
+        if status != 0:
+            self.log.error('Error transcoding')
+            self.log.error('cmd: %s' % cmd)
+            self.log.error('status: %s' % status)
+            self.log.error('output: %s' % output)
+            if self.exit_on_error:
+                raise IOError('Error transcribing')
 
     def process(self):
 
