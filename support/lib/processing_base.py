@@ -2,11 +2,10 @@
 
 ##########################################################################
 #
-#   Base class for quicklook movie generators 
+#   Base class for site data processing
 #
-#   2022-06-29  Todd Valentic
-#               Extracted from quicklook.py
-#               Make parallel via multiprocessing 
+#   2023-02-27  Todd Valentic
+#               Similar to quicklook processing 
 #
 ##########################################################################
 
@@ -19,18 +18,14 @@ import tempfile
 import os
 
 import model
-import subprocess
 import multiprocessing
 import shlex
 
-def make_movie(cmd): 
-    return subprocess.call(shlex.split(cmd))
-
-def make_movie_2(cmd):
+def processing_handler(cmd):
     status, output = commands.getstatusoutput(cmd)
     return (status, output)
 
-class QuicklookBase(ProcessClient):
+class ProcessingBase(ProcessClient):
 
     def __init__(self, argv):
         ProcessClient.__init__(self, argv)
@@ -43,16 +38,19 @@ class QuicklookBase(ProcessClient):
 
     def init(self):
 
-        self.movie_cmd          = self.get('task.cmd')
+        self.task_cmd           = self.get('task.cmd')
         self.formats            = self.getList('formats','mp4')
         self.exitOnError        = self.getboolean('exitOnError', False)
 
         self.replaceStation     = PatternTemplate('station')
         self.replaceInstrument  = PatternTemplate('instrument')
+        self.replaceProduct     = PatternTemplate('product')
         self.replaceFilelist    = PatternTemplate('filelist')
         self.replaceExt         = PatternTemplate('ext')
 
         self.pool = multiprocessing.Pool(None)
+
+        self.product = self.get_product(self.get('product'))
 
     def log_elapsed(self, msg, starttime, indent=0):
 
@@ -62,6 +60,9 @@ class QuicklookBase(ProcessClient):
          elapsed = datetime.timedelta(seconds=round(seconds)) 
 
          self.log.info('%s%s (%s)' % (' '*indent, msg, elapsed))
+
+    def get_product(self, name):
+        return model.ProcessedProduct.query.filter_by(name=name).first()
 
     def get_file_list(self, camera, date):
 
@@ -93,34 +94,17 @@ class QuicklookBase(ProcessClient):
 
         return image
 
-    def make_movie(self, camera, timestamp, ext, listname):
-
-        cmd = self.replaceFilelist(self.movie_cmd, listname) 
-        cmd = self.replaceStation(cmd, camera.station.name)
-        cmd = self.replaceInstrument(cmd, camera.instrument.name)
-        cmd = self.replaceExt(cmd, ext)
-        cmd = timestamp.strftime(cmd)
-
-        self.log.debug('Running %s' % cmd)
-
-        status, output = commands.getstatusoutput(cmd)
-
-        if status != 0:
-            self.log.error('Problem running cmd')
-            self.log.error('cmd: %s' % cmd)
-            self.log.error('status: %s' % status)
-            self.log.error('output: %s' % output)
-            
-            raise IOError('Failed to run command')
-
     def update_db(self, camera, timestamp):
 
-        match = dict(timestamp=timestamp, stationinstrument_id=camera.id)
-        movie = model.QuickLookMovie.query.filter_by(**match).first()
+        match = dict(timestamp=timestamp, 
+                     stationinstrument_id=camera.id, 
+                     product_id=self.product.id)
 
-        if not movie:
-            movie = model.QuickLookMovie(**match)
-            model.add(movie)
+        instance = model.ProcessedData.query.filter_by(**match).first()
+
+        if not instance:
+            instance = model.ProcessedData(**match)
+            model.add(instance)
 
             try:
                 model.commit()
@@ -129,16 +113,17 @@ class QuicklookBase(ProcessClient):
                 model.rollback()
                 raise
 
-    def make_movies(self, camera, timestamp, formats):
+    def make_products(self, camera, timestamp, formats):
         
         filelist = self.get_file_list(camera, timestamp) 
 
         with tempfile.NamedTemporaryFile(dir='.', delete=False) as f:
             f.write('\n'.join(filelist))
 
-        cmd = self.replaceFilelist(self.movie_cmd, f.name) 
+        cmd = self.replaceFilelist(self.task_cmd, f.name) 
         cmd = self.replaceStation(cmd, camera.station.name)
         cmd = self.replaceInstrument(cmd, camera.instrument.name)
+        cmd = self.replaceProduct(cmd, self.product.name)
         cmd = timestamp.strftime(cmd)
                 
         starttime = self.currentTime() 
@@ -147,7 +132,7 @@ class QuicklookBase(ProcessClient):
 
         try:
             tasks = [self.replaceExt(cmd, ext) for ext in formats]
-            r = self.pool.map_async(make_movie_2, tasks, callback=results.append)
+            r = self.pool.map_async(processing_handler, tasks, callback=results.append)
             r.wait()
         except:
             raise 
@@ -158,8 +143,10 @@ class QuicklookBase(ProcessClient):
 
         if sum([entry[0] for entry in results[0]]):
             self.log.info('results: %s' % results)
-            raise IOError('Problem running movie commands: %s' % results)
+            raise IOError('Problem running processing command: %s' % results)
 
         self.update_db(camera, timestamp)
 
         return len(filelist)
+
+

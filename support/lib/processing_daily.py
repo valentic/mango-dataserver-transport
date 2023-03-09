@@ -2,7 +2,7 @@
 
 ##########################################################################
 #
-#   Generate quicklook images 
+#   Generate daily processing data products 
 #
 #   2022-04-14  Todd Valentic
 #               Initial implementation
@@ -10,9 +10,13 @@
 #   2022-05-23  Todd Valentic
 #               Handle situation where site has no images 
 #
+#   2023-02-27  Todd Valentic
+#               Refactor to be a generic data processing stage 
+#               Add restrict
+#
 ##########################################################################
 
-from quicklook_base import QuicklookBase
+from processing_base import ProcessingBase
 
 import sys
 import schedule
@@ -72,13 +76,13 @@ class DateTracker:
 
         self.save()
 
-class QuicklookDaily (QuicklookBase):
+class ProcessingDaily (ProcessingBase):
 
     def __init__(self, argv):
-        QuicklookBase.__init__(self, argv)
+        ProcessingBase.__init__(self, argv)
 
     def init(self):
-        QuicklookBase.init(self)
+        ProcessingBase.init(self)
 
         self.scheduler      = schedule.Scheduler()
         self.tracker        = DateTracker('tracker.ini', self.log)
@@ -86,6 +90,8 @@ class QuicklookDaily (QuicklookBase):
         self.runAtStart     = self.getboolean('runAtStart', False)
         self.exitOnError    = self.getboolean('exitOnError', False)
         self.maxRetries     = self.getint('maxRetries',5)
+
+        self.restrict       = self.getList('restrict')
 
     def process_camera(self, camera):
 
@@ -117,7 +123,7 @@ class QuicklookDaily (QuicklookBase):
         self.log.info('  - %s %s %s' % \
             (camera.station.name, camera.instrument.name, timestamp.date()))
 
-        num_images = self.make_movies(camera, timestamp, self.formats)
+        num_images = self.make_products(camera, timestamp, self.formats)
 
         self.tracker.put(camera, timestamp, num_images) 
 
@@ -150,6 +156,11 @@ class QuicklookDaily (QuicklookBase):
         starttime = self.currentTime() 
 
         for camera in model.StationInstrument.query.all():
+
+            si = '%s-%s' % (camera.station.name, camera.instrument.name)
+            if self.restrict and si not in self.restrict:
+                continue
+                
             while self.process_camera(camera) and self.running:
                 pass
             if not self.running:
@@ -183,5 +194,5 @@ class QuicklookDaily (QuicklookBase):
         self.log.info('Exiting')
 
 if __name__ == '__main__':
-    QuicklookDaily(sys.argv).run()
+    ProcessingDaily(sys.argv).run()
 

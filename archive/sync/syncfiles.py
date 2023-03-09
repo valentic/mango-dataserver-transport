@@ -216,7 +216,13 @@ class Fetcher(ProcessClient):
             self.log.debug('No change detected')
             return
 
-        output = output.split('\n')
+        # DEBUG - REMOVE ONCE FIXED
+        try:
+            output = output.split('\n')
+        except:
+            self.log.error('*** Problem splitting')
+            self.log.error('output=%s' % output)
+            raise 
 
         self.log.info('Checking %d files' % len(output))
     

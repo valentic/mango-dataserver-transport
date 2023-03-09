@@ -2,7 +2,7 @@
 
 ##########################################################################
 #
-#   Reprocess quicklook images 
+#   Reprocess data product 
 #
 #   The input file format is a CSV file with the first line being headers:
 #
@@ -17,9 +17,13 @@
 #   2022-06-29  Todd Valentic
 #               Initial implementation
 #
+#   2023-02-17  Todd Valentic
+#               Refactor to handle general data products
+#               Strip white space from fields in csv file
+#
 ##########################################################################
 
-from quicklook_base import QuicklookBase
+from processing_base import ProcessingBase
 from Transport import NewsPollMixin
 from Transport import NewsTool
 
@@ -29,10 +33,10 @@ import csv
 import datetime
 import model
 
-class QuicklookReprocess (QuicklookBase, NewsPollMixin):
+class ProcessingRedo (ProcessingBase, NewsPollMixin):
 
     def __init__(self, argv):
-        QuicklookBase.__init__(self, argv)
+        ProcessingBase.__init__(self, argv)
         NewsPollMixin.__init__(self, callback=self.process)
 
     def process_camera(self, camera, timestamp):
@@ -40,7 +44,7 @@ class QuicklookReprocess (QuicklookBase, NewsPollMixin):
         self.log.info('  - %s %s %s' % \
             (camera.station.name, camera.instrument.name, timestamp.date()))
 
-        self.make_movies(camera, timestamp, self.formats)
+        self.make_products(camera, timestamp, self.formats)
 
     def get_station(self, name):
         return model.Station.query.filter_by(name=name).first()
@@ -63,11 +67,20 @@ class QuicklookReprocess (QuicklookBase, NewsPollMixin):
     def process_file(self, filename):
 
         with open(filename) as csvfile:
-            reader = csv.DictReader(csvfile)
+
+            # Manually read first line and trim white space from field names.
+
+            header = [h.strip() for h in csvfile.next().split(',')]
+            reader = csv.DictReader(csvfile, fieldnames=header)
+
             for row in reader:
 
-                camera = self.get_stationinstrument(row['station'], row['instrument']) 
-                timestamp = datetime.datetime.strptime(row['timestamp'], '%Y-%m-%d')
+                station = row['station'].strip()
+                instrument = row['instrument'].strip()
+                timestamp = row['timestamp'].strip()
+
+                camera = self.get_stationinstrument(station, instrument) 
+                timestamp = datetime.datetime.strptime(timestamp, '%Y-%m-%d')
                 timestamp = timestamp.replace(tzinfo=pytz.utc)
 
                 self.process_camera(camera, timestamp)
@@ -87,5 +100,5 @@ class QuicklookReprocess (QuicklookBase, NewsPollMixin):
         self.log.info('Processing finished')
 
 if __name__ == '__main__':
-    QuicklookReprocess(sys.argv).run()
+    ProcessingRedo(sys.argv).run()
 
