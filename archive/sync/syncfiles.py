@@ -248,6 +248,10 @@ class Fetcher(ProcessClient):
             try:
                 self.process()
             except:
+                # Needed because sometimes we pick up errors
+                # in the remote database 
+                model.rollback()
+
                 self.log.exception('Problem processing')
                 if self.exit_on_error:
                     break
