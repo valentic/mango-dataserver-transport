@@ -7,6 +7,9 @@
 #   2023-02-27  Todd Valentic
 #               Similar to quicklook processing 
 #
+#   2023-05-04  Todd Valentic
+#               Cast timestamp -> date in database update
+#
 ##########################################################################
 
 from Transport import ProcessClient
@@ -96,7 +99,7 @@ class ProcessingBase(ProcessClient):
 
     def update_db(self, camera, timestamp):
 
-        match = dict(timestamp=timestamp, 
+        match = dict(timestamp=timestamp.date(), 
                      stationinstrument_id=camera.id, 
                      product_id=self.product.id)
 
