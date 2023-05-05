@@ -1,0 +1,23 @@
+#!/bin/sh
+
+set -o errexit
+
+export PATH=$PATH:/opt/transport/groups/mango/support/bin
+export PATH=$PATH:/opt/python-3.11.2/bin
+
+echo "Creating summary CSV file"
+uptime_summary.sh -o uptime.csv
+
+echo "Creating virtual env"
+if [ -d venv ]; then 
+    rm -rf venv; 
+fi
+
+python3.11 -m venv venv
+. venv/bin/activate
+
+pip install -U pip
+
+pip install -r requirements.txt
+
+
