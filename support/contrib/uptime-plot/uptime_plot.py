@@ -15,6 +15,7 @@ import argparse
 import csv
 import logging
 import matplotlib.pyplot as plt
+import os
 import pandas
 import seaborn 
 import sys
@@ -23,6 +24,11 @@ class Plotter:
 
     def __init__(self, args):
         self.args = args
+
+        outputdir = os.path.dirname(args.output)
+        
+        if not os.path.exists(outputdir):
+            os.makedirs(outputdir)
 
     def run(self):
         
@@ -36,8 +42,9 @@ class Plotter:
         seaborn.set_theme(style="white", rc={"axes.facecolor": (0,0,0,0)})
 
         pal = seaborn.cubehelix_palette(num_cameras, rot=-0.25, light=0.7)
-        g = seaborn.FacetGrid(df, row="camera", hue="camera", aspect=25, 
-            height=0.5, palette=pal,
+        g = seaborn.FacetGrid(df, row="camera", hue="camera", 
+            aspect=25, height=0.5, 
+            palette=pal,
             xlim=(pandas.Timestamp('2012'),pandas.Timestamp('now'))
             ) 
 
@@ -64,7 +71,7 @@ class Plotter:
 
         logging.debug('Output saved to %s', self.args.output)
 
-        return 0 
+        return True 
 
 if __name__ == '__main__':
 
