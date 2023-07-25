@@ -225,6 +225,7 @@ class Fetcher(ProcessClient):
             raise 
 
         self.log.info('Checking %d files' % len(output))
+        self.log.debug('output=%s' % output)
     
         for entry in output:
 
