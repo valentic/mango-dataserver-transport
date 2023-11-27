@@ -15,6 +15,9 @@
 #   2023-02-14  Todd Valentic
 #               Add transcoding for webm
 #
+#   2023-11-27  Todd Valentic
+#               Handle unknown name parsing better.
+#
 ##########################################################################
 
 import hashlib
@@ -229,7 +232,11 @@ class Fetcher(ProcessClient):
     
         for entry in output:
 
-            datafile = DataFile(entry)
+            try:
+                datafile = DataFile(entry)
+            except (AttributeError, ValueError) as err:
+                self.log.error("Failed to process entry: %s", entry)
+                continue
 
             if not datafile.is_valid():
                 self.log.info(datafile.src_filename)
