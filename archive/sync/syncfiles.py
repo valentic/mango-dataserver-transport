@@ -18,6 +18,10 @@
 #   2023-11-27  Todd Valentic
 #               Handle unknown name parsing better.
 #
+#   2024-02-01  Todd Valentic
+#               Upstream filenames have changed. Now using prefix MANGO_
+#                   instead of DASI_. Adapt name parser to handle both.
+#
 ##########################################################################
 
 import hashlib
@@ -44,15 +48,18 @@ class DataFile:
 
         self.src_modtime, self.src_filesize, self.src_filename = entry.split()
 
-        # src filenames are in the form DASI_<date>_<prod>.mp4
-        # <date> - YYYYmmdd
-        # <prod> - green or red
+        # src filenames are in the form <prefix>_<date>_<prod>.mp4
+        # 2024-01-23: Looks like there was a name change. Now
+        # they are prefixed with MANGO_. Add both to the pattern:
+        # <prefix> - MANGO | DASI
+        # <date>   - YYYYmmdd
+        # <prod>   - green or red
         # Example: DASI_20230206_green.mp4
 
-        pattern = ".*DASI_([0-9]+)_([a-z]+).mp4"
+        pattern = ".*(MANGO|DASI)_([0-9]+)_([a-z]+).mp4"
         namemap = dict(green='winds-greenline', red='winds-redline')
 
-        datestr, namekey = re.match(pattern, self.src_filename).groups()
+        prefix, datestr, namekey = re.match(pattern, self.src_filename).groups()
 
         self.timestamp = datefunc.strptime(datestr, '%Y%m%d', tzinfo=pytz.utc)
         self.product = self._lookup_product(namemap[namekey])
@@ -236,6 +243,7 @@ class Fetcher(ProcessClient):
                 datafile = DataFile(entry)
             except (AttributeError, ValueError) as err:
                 self.log.error("Failed to process entry: %s", entry)
+                self.log.error(err)
                 continue
 
             if not datafile.is_valid():
