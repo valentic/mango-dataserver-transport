@@ -24,7 +24,9 @@ WITH dailysummary as (
         sum(numimages) as totalimages,
         min(firsttime::date) as firstday,
         max(lasttime::date) as lastday,
-        max(lasttime::date) - min(firsttime::date) + 1 as totaldays 
+        max(lasttime::date) - min(firsttime::date) + 1 as totaldays,
+        CURRENT_DATE as today,
+        CURRENT_DATE - min(firsttime::date) + 1 as totaldays_today
     FROM 
         dailysummary
     GROUP BY
@@ -61,7 +63,10 @@ SELECT
     totalimages, 
     totalbytes,
     firstday,
-    lastday
+    lastday,
+    totaldays_today,
+    datadays::real / totaldays_today * 100 as uptime_today,
+    today
 from 
     totalsummary as ts
     join
