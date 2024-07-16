@@ -1,3 +1,5 @@
+-- 2024-07-15 TAV Remove constraint that station must be active
+
 DROP FUNCTION image_islands_span;
 CREATE OR REPLACE FUNCTION image_islands_span (
     _span_start timestamp with time zone,
@@ -57,8 +59,8 @@ RETURN QUERY
             ) as islands on TRUE
         )
     WHERE
-        status.name='active'
-        AND
+        --status.name='active'
+        --AND
         system_model.name='mcs'
 
 ;
