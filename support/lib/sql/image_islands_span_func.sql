@@ -1,4 +1,5 @@
 -- 2024-07-15 TAV Remove constraint that station must be active
+-- 2024-07-16 TAV Add status in return table
 
 DROP FUNCTION image_islands_span;
 CREATE OR REPLACE FUNCTION image_islands_span (
@@ -11,7 +12,8 @@ RETURNS TABLE (
     station varchar,
     instrument varchar,
     "timestamp" timestamp with time zone,
-    island bigint
+    island bigint,
+    status varchar
 )
 
 LANGUAGE plpgsql
@@ -24,7 +26,8 @@ RETURN QUERY
         station.name as station,
         instrument.name as instrument,
         islands.timestamp as "timestamp",
-        islands.island
+        islands.island,
+        status.name as status
     FROM (
         stationinstrument
         JOIN

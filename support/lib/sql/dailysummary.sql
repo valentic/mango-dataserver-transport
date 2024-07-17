@@ -1,16 +1,18 @@
 -- Call as
+-- 2024-07-15 TAV Filter on active stations (image_islands_span returns all now)
 
 WITH summary as (
     SELECT
         station,
         instrument,
+        status,
         min(timestamp) as starttime,
         max(timestamp) as stoptime,
         count(timestamp) as num_images
     FROM
         image_islands_span(now()-interval '1d', now())
     GROUP BY
-        station, instrument, island
+        station, instrument, status, island
 )
 
 SELECT
@@ -22,5 +24,7 @@ SELECT
     num_images as "Num Images"
 FROM
     summary 
+WHERE
+    status = 'active'
 ORDER BY
     station, instrument
