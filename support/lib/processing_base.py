@@ -10,6 +10,10 @@
 #   2023-05-04  Todd Valentic
 #               Cast timestamp -> date in database update
 #
+#   2025-12-05  Todd Valentic
+#               Handle case where we have no images in list (this can
+#                   happen if there is only one image in an image island)
+#
 ##########################################################################
 
 from Transport import ProcessClient
@@ -119,6 +123,9 @@ class ProcessingBase(ProcessClient):
     def make_products(self, camera, timestamp, formats):
         
         filelist = self.get_file_list(camera, timestamp) 
+
+        if not filelist:
+            return 0
 
         with tempfile.NamedTemporaryFile(dir='.', delete=False) as f:
             f.write('\n'.join(filelist))
