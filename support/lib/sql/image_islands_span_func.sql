@@ -1,10 +1,12 @@
 -- 2024-07-15 TAV Remove constraint that station must be active
 -- 2024-07-16 TAV Add status in return table
+-- 2026-02-14 TAV Add gap_time parameter (default 3h)
 
 DROP FUNCTION image_islands_span;
 CREATE OR REPLACE FUNCTION image_islands_span (
     _span_start timestamp with time zone,
-    _span_end timestamp with time zone 
+    _span_end timestamp with time zone,
+    _gap_time interval = '3h' 
 )
 
 RETURNS TABLE (
@@ -46,7 +48,7 @@ RETURN QUERY
                 SELECT
                     image.stationinstrument_id,
                     image.timestamp,
-                    (image.timestamp - lag(image.timestamp,1,image.timestamp-interval '1d') over (order by image.timestamp) > interval '3h')::int as gap 
+                    (image.timestamp - lag(image.timestamp,1,image.timestamp-interval '1d') over (order by image.timestamp) > _gap_time)::int as gap 
                 FROM
                     image
                 WHERE

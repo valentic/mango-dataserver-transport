@@ -1,8 +1,11 @@
+-- 2026-02-14 TAV Add _gap_time parameter (default 3h)
+
 DROP FUNCTION find_image_island;
 CREATE OR REPLACE FUNCTION find_image_island (
     _station varchar,
     _instrument varchar,
-    _targetdate timestamp with time zone
+    _targetdate timestamp with time zone,
+    _gap_time interval = '3h'
 )
 
 RETURNS TABLE (
@@ -26,7 +29,7 @@ RETURN QUERY
             (min(timestamp) + (max(timestamp) - min(timestamp))/2)::date as midtime,
             count(timestamp) as num_images
         FROM
-            image_islands_span(_targetdate - interval '2d', _targetdate + interval '2d') as span
+            image_islands_span(_targetdate - interval '2d', _targetdate + interval '2d', _gap_time) as span
         WHERE
             station=_station
             AND
