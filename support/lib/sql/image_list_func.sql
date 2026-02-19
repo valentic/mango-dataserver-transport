@@ -1,8 +1,12 @@
+-- 2026-02-14 TAV Add gap_time parameter (default 3h)
+--                Remove limit 1 constraint
+
 DROP FUNCTION image_list;
 CREATE OR REPLACE FUNCTION image_list (
     _station varchar, 
     _instrument varchar,
-    _targetdate date 
+    _targetdate date,
+    _gap_time interval = '3h'
 )
 RETURNS table (
     filename text 
@@ -26,9 +30,9 @@ FROM (
     SELECT 
         *
     FROM
-        find_image_island(_station, _instrument, _targetdate)
-    LIMIT 
-        1
+        find_image_island(_station, _instrument, _targetdate, _gap_time)
+--    LIMIT 
+--        1
     ) as island
     LEFT JOIN LATERAL (
         SELECT
