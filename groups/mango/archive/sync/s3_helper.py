@@ -1,4 +1,4 @@
-#!/usr/local/bin/uv run 
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [ "requests" ]
@@ -34,10 +34,10 @@ import requests
 import sys
 import xml.etree.ElementTree as ET
 
-VERSION="1.0"
+VERSION = "1.0"
+
 
 class Pager:
-
     def __init__(self, url, ns=None, **params):
         self.url = url
         self.ns = ns
@@ -53,7 +53,7 @@ class Pager:
         if self.finished:
             raise StopIteration
 
-        params = { "list-type": "2", **self.params }
+        params = {"list-type": "2", **self.params}
 
         if self.next_token:
             params["continuation-token"] = self.next_token
@@ -61,17 +61,17 @@ class Pager:
         response = requests.get(self.url, params=params)
         root = ET.fromstring(response.content)
 
-        self.finished = root.find("s3:IsTruncated", self.ns).text == 'false'
+        self.finished = root.find("s3:IsTruncated", self.ns).text == "false"
 
         if not self.finished:
             self.next_token = root.find("s3:NextContinuationToken", self.ns).text
 
-        return root 
+        return root
+
 
 class S3:
-
     def __init__(self, url):
-        self.url = url 
+        self.url = url
         self.ns = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
 
     def remove_ns(self, name):
@@ -84,18 +84,17 @@ class S3:
         finished = False
 
         for page in pager:
-
-            for contents in page.findall('s3:Contents', self.ns):
+            for contents in page.findall("s3:Contents", self.ns):
                 record = {self.remove_ns(child.tag): child.text for child in contents}
-                record["ETag"] = record["ETag"].replace('"', '') # strip quotes
+                record["ETag"] = record["ETag"].replace('"', "")  # strip quotes
                 if not record["Key"].endswith("/"):
                     records.append(record)
-            
+
                 if limit and len(records) >= limit:
                     finished = True
                     break
 
-            if finished: 
+            if finished:
                 break
 
         return sorted(records, key=lambda item: item["Key"])
@@ -121,15 +120,12 @@ class Application:
 
     def run(self):
         """Entry point"""
-        return self.args.func(self.args) 
+        return self.args.func(self.args)
 
     def list_handler(self, args):
         """List bucket contents"""
 
-        params = {
-            "limit": args.limit,
-            "prefix": args.prefix
-        }
+        params = {"limit": args.limit, "prefix": args.prefix}
 
         records = self.s3.list(**params)
 
@@ -152,75 +148,59 @@ class Application:
         else:
             print(result)
 
-        return 0 
+        return 0
 
     def download_handler(self, args):
         """Download file"""
 
-        params = {
-            "output": args.output
-        }
+        params = {"output": args.output}
 
         self.s3.download(args.key, **params)
 
         return 0
-        
+
     def parse_command_line(self):
         """Parse command line options"""
-        
+
         parser = argparse.ArgumentParser()
         subparser = parser.add_subparsers(dest="cmd")
 
-        parser.add_argument(
-            "-V", "--version",
-            action="version",
-            version=VERSION
-        )
+        parser.add_argument("-V", "--version", action="version", version=VERSION)
 
         parser.add_argument(
-            "-u", "--url",
-            help="Host URL",
-            default="https://ncsa.osn.xsede.org/airglow"
+            "-u", "--url", help="Host URL", default="https://ncsa.osn.xsede.org/airglow"
         )
 
         parser_list = subparser.add_parser("list", help="List files")
         parser_list.set_defaults(func=self.list_handler)
 
         parser_list.add_argument(
-            "-p", "--prefix",
-            help="Only list keys starting with prefix"
+            "-p", "--prefix", help="Only list keys starting with prefix"
         )
 
         parser_list.add_argument(
-            "-n", "--limit", type=int,
-            help="Limit output to this number of records"
+            "-n", "--limit", type=int, help="Limit output to this number of records"
         )
 
         parser_list.add_argument(
-            "-o", "--output",
-            type=Path,
-            help="Output filename (default is stdout)"
+            "-o", "--output", type=Path, help="Output filename (default is stdout)"
         )
 
         parser_list.add_argument(
-            "-f", "--format",
-            choices=["json", "list"], 
+            "-f",
+            "--format",
+            choices=["json", "list"],
             default="json",
-            help="Output format (default is json)"
+            help="Output format (default is json)",
         )
 
         parser_download = subparser.add_parser("download", help="Download file")
         parser_download.set_defaults(func=self.download_handler)
 
-        parser_download.add_argument(
-            "key",
-            help="Key to download"
-        )
+        parser_download.add_argument("key", help="Key to download")
 
         parser_download.add_argument(
-            "-o", "--output",
-            type=Path,
-            help="Output filename (default is key name)"
+            "-o", "--output", type=Path, help="Output filename (default is key name)"
         )
 
         args = parser.parse_args()
@@ -230,6 +210,7 @@ class Application:
             parser.exit()
 
         return args
+
 
 if __name__ == "__main__":
     status_code = Application().run()

@@ -22,24 +22,26 @@
 #               Upstream filenames have changed. Now using prefix MANGO_
 #                   instead of DASI_. Adapt name parser to handle both.
 #
+#   2026-02-20  Todd Valentic
+#               Update for Python3 / DataTransport3
+#
 ##########################################################################
 
 import hashlib
 import os
 import re
-import sys
 import shutil
-import commands 
+import subprocess
+import sys
+from pathlib import Path
 
-import pytz
 import model
+import pytz
+from datatransport import ProcessClient
+from datatransport.utilities import PatternTemplate, datefunc
 
-from Transport import ProcessClient
-from Transport.Util import PatternTemplate
-from Transport.Util import datefunc
 
 class DataFile:
-
     # TBD - expand to be a factory for multiple data products
 
     def __init__(self, entry):
@@ -57,11 +59,11 @@ class DataFile:
         # Example: DASI_20230206_green.mp4
 
         pattern = ".*(MANGO|DASI)_([0-9]+)_([a-z]+).mp4"
-        namemap = dict(green='winds-greenline', red='winds-redline')
+        namemap = dict(green="winds-greenline", red="winds-redline")
 
-        prefix, datestr, namekey = re.match(pattern, self.src_filename).groups()
+        _prefix, datestr, namekey = re.match(pattern, self.src_filename).groups()
 
-        self.timestamp = datefunc.strptime(datestr, '%Y%m%d', tzinfo=pytz.utc)
+        self.timestamp = datefunc.strptime(datestr, "%Y%m%d", tzinfo=pytz.utc)
         self.product = self._lookup_product(namemap[namekey])
 
     def _lookup_product(self, name):
@@ -75,12 +77,12 @@ class DataFile:
     def is_valid(self):
 
         match = dict(
-            timestamp = self.timestamp,
-            product_id = self.product.id,
-            src_filesize = self.src_filesize,
-            src_filename = self.src_filename,
-            src_modtime = self.src_modtime
-            )
+            timestamp=self.timestamp,
+            product_id=self.product.id,
+            src_filesize=self.src_filesize,
+            src_filename=self.src_filename,
+            src_modtime=self.src_modtime,
+        )
 
         instance = model.FusionData.query.filter_by(**match).first()
 
@@ -88,14 +90,14 @@ class DataFile:
 
     def update_db(self):
 
-        match = dict(   
-            timestamp = self.timestamp,
-            product_id = self.product.id,
-            )
+        match = dict(
+            timestamp=self.timestamp,
+            product_id=self.product.id,
+        )
 
         instance = model.FusionData.query.filter_by(**match).first()
 
-        if not instance:    
+        if not instance:
             instance = model.FusionData(**match)
             model.add(instance)
 
@@ -105,80 +107,82 @@ class DataFile:
 
         try:
             model.commit()
-        except:
+        except Exception:
             model.rollback()
             raise
-    
+
+
 class Fetcher(ProcessClient):
-    
     def __init__(self, argv):
         ProcessClient.__init__(self, argv)
 
-        try:    
+    def init(self):
+
+        try:
             self.read_config()
-        except:
-            self.log.exception('Problem reading config')
+        except Exception:
+            self.log.exception("Problem reading config")
             self.abort()
 
-        self.checksumFile = 'checksum.dat'
+        self.checksumFile = Path("checksum.dat")
 
         self.checksum = self.load_checksum()
 
     def read_config(self):
 
-        self.scan_cmd = self.get('scan.cmd')
-        self.fetch_cmd = self.get('fetch.cmd')
-        self.output_name = self.get('output.name')
+        self.scan_cmd = self.config.get("scan.cmd")
+        self.fetch_cmd = self.config.get("fetch.cmd")
+        self.output_name = self.config.get("output.name")
 
-        self.rate = self.getRate('rate','5:00')
-        self.exit_on_error = self.getboolean('exitOnError', False)
+        self.rate = self.config.get_rate("rate", "5:00")
+        self.exit_on_error = self.config.get_boolean("exit_on_error", False)
 
-        self.replaceFilename = PatternTemplate('filename','.')
-        self.replaceProduct = PatternTemplate('product')
+        self.replace_filename = PatternTemplate("filename", ".")
+        self.replaceProduct = PatternTemplate("product")
 
-        self.log.info('Scan cmd: %s' % self.scan_cmd)
-        self.log.info('Fetch cmd: %s' % self.fetch_cmd)
+        self.log.info("Scan cmd: %s", self.scan_cmd)
+        self.log.info("Fetch cmd: %s", self.fetch_cmd)
 
     def load_checksum(self):
-        
-        try: 
-            with open(self.checksumFile) as f:
-                return f.read() 
-        except:
-            return '' 
+
+        try:
+            return self.checksumFile.read_text(encoding="utf-8")
+        except Exception:
+            return ""
 
     def save_checksum(self, checksum):
 
-        with open(self.checksumFile, 'w') as f:
-            f.write(checksum)
+        self.checksumFile.write_text(checksum, encoding="utf-8")
 
         self.checksum = checksum
 
-        self.log.info('Saving checksum')
+        self.log.info("Saving checksum")
 
     def download(self, datafile):
 
-        self.log.info('  downloading')
-        
-        cmd = self.replaceFilename(self.fetch_cmd, datafile.src_filename)
+        self.log.info("  downloading")
 
-        status, output = commands.getstatusoutput(cmd)
+        cmd = self.replace_filename(self.fetch_cmd, datafile.src_filename)
+
+        status, output = subprocess.getstatusoutput(cmd)
 
         if status != 0:
-            self.log.error('Problem downloading:')
-            self.log.error('  cmd: %s' % cmd)
-            self.log.error('  status: %s' % status)
-            self.log.error('  output: %s' % output)
+            self.log.error("Problem downloading:")
+            self.log.error("  cmd: %s", cmd)
+            self.log.error("  status: %s", status)
+            self.log.error("  output: %s", output)
 
-            raise IOError('Failed to download %s' % datafile.src_filename)
+            raise OSError(f"Failed to download {datafile.src_filename}")
 
     def copy_to_archive(self, datafile):
 
         destname = datafile.timestamp.strftime(self.output_name)
-        destname = self.replaceFilename(destname, os.path.basename(datafile.src_filename))
+        destname = self.replace_filename(
+            destname, os.path.basename(datafile.src_filename)
+        )
         destname = self.replaceProduct(destname, datafile.product.name)
 
-        self.log.info('  copy to archive: %s' % destname)
+        self.log.info("  copy to archive: %s", destname)
 
         srcname = os.path.basename(datafile.src_filename)
 
@@ -195,50 +199,49 @@ class Fetcher(ProcessClient):
 
     def transcode(self, filename):
 
-        if not filename.endswith('mp4'):
+        if not filename.endswith("mp4"):
             return
 
-        self.log.info('  transcode')
+        self.log.info("  transcode")
 
-        destname = filename.replace('.mp4', '.webm')
+        destname = filename.replace(".mp4", ".webm")
 
-        cmd = 'ffmpeg -y -hide_banner -loglevel error -i %s -c:v libvpx-vp9 -crf 30 -b:v 0 -b:a 128k -c:a libopus %s' % (filename, destname)
+        cmd = f"ffmpeg -y -hide_banner -loglevel error -i {filename} -c:v libvpx-vp9 -crf 30 -b:v 0 -b:a 128k -c:a libopus {destname}"
 
-        status, output = commands.getstatusoutput(cmd)
+        status, output = subprocess.getstatusoutput(cmd)
 
         if status != 0:
-            self.log.error('Error transcoding')
-            self.log.error('cmd: %s' % cmd)
-            self.log.error('status: %s' % status)
-            self.log.error('output: %s' % output)
+            self.log.error("Error transcoding")
+            self.log.error("cmd: %s", cmd)
+            self.log.error("status: %s", status)
+            self.log.error("output: %s", output)
             if self.exit_on_error:
-                raise IOError('Error transcribing')
+                raise OSError("Error transcribing")
 
     def process(self):
 
-        status, output = commands.getstatusoutput(self.scan_cmd)
-        self.log.debug('status: %s' % status)
-        self.log.debug('output: %s' % output)
+        status, output = subprocess.getstatusoutput(self.scan_cmd)
+        self.log.debug("status: %s", status)
+        self.log.debug("output: %s", output)
 
-        new_checksum = hashlib.md5(output).hexdigest()
+        new_checksum = hashlib.md5(output.encode("utf-8")).hexdigest()
 
         if new_checksum == self.checksum:
-            self.log.debug('No change detected')
+            self.log.debug("No change detected")
             return
 
         # DEBUG - REMOVE ONCE FIXED
         try:
-            output = output.split('\n')
-        except:
-            self.log.error('*** Problem splitting')
-            self.log.error('output=%s' % output)
-            raise 
+            output = output.split("\n")
+        except Exception:
+            self.log.error("*** Problem splitting")
+            self.log.error("output=%s", output)
+            raise
 
-        self.log.info('Checking %d files' % len(output))
-        self.log.debug('output=%s' % output)
-    
+        self.log.info("Checking %d files", len(output))
+        self.log.debug("output=%s", output)
+
         for entry in output:
-
             try:
                 datafile = DataFile(entry)
             except (AttributeError, ValueError) as err:
@@ -253,27 +256,26 @@ class Fetcher(ProcessClient):
                 datafile.update_db()
 
             if not self.running:
-                return 
+                return
 
         self.save_checksum(new_checksum)
 
-    def run(self):
-        self.log.info('Start')
+    def main(self):
+        self.log.info("Start")
 
         while self.wait(self.rate):
             try:
                 self.process()
-            except:
-                # Needed because sometimes we pick up errors
-                # in the remote database 
+            except Exception:
+                # Sometimes we pick up errors in the remote database
                 model.rollback()
 
-                self.log.exception('Problem processing')
+                self.log.exception("Problem processing")
                 if self.exit_on_error:
                     break
 
-        self.log.info('Stop')
+        self.log.info("Stop")
 
-if __name__ == '__main__':
-    Fetcher(sys.argv).run() 
 
+if __name__ == "__main__":
+    Fetcher(sys.argv).run()
