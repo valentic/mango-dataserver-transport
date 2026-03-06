@@ -1,0 +1,9 @@
+[DEFAULT]
+
+hostname:	testing
+sitename:	test.mango.server.mangodata
+
+[TransportServer]
+
+port: 8090
+
