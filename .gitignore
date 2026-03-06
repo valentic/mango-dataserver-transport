@@ -3,6 +3,8 @@ support/var
 support/keys
 *.org
 *.bak
+.astropy/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
