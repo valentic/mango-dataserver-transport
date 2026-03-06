@@ -9,13 +9,18 @@
 #   2023-05-05  Todd Valentic
 #               Initial implementation
 #
+#   2026-02-26  Todd Valentic
+#               Add dryrun
+#               Create output directory if needed
+#               Version 1.0.1
+#
 ##########################################################################
 
 set -o errexit  # abort on nonzero exitstatus
 set -o nounset  # abort on unbound variable
 set -o pipefail # do not hide errors within pipes
 
-VESION=1.0.0
+VESION=1.0.1
 PROJECT=uptime-json
 
 BASEDIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && pwd )"
@@ -38,6 +43,7 @@ function usage()
       -h, --help            show this help message and exit
       -V, --version         $progname vesion
       -v, --verbose         increase the verbosity (can be applied multiple times)
+      -n, --dryrun          show what would happen 
       -s, --server          SQL database server host (default: localhost) 
       -p, --port            SQL database server port (default: 5432)
       -u, --user            SQL database user (default: transport)
@@ -53,6 +59,7 @@ HEREDOC
 
 progname=$(basename $0)
 verbose=0
+dryrun=0
 OUTPUT=
 HOST=localhost
 PORT=15432
@@ -66,8 +73,8 @@ SQLOPTS="-h $HOST -p $PORT -U $USER $DB"
 #-------------------------------------------------------------------------
 
 OPTS=$(getopt \
-    -o "hVvs:p:u:d:o:" \
-    --long "help,version,verbose,server:,port:,user:,database:,output:" \
+    -o "hVvns:p:u:d:o:" \
+    --long "help,version,verbose,dryrun,server:,port:,user:,database:,output:" \
     -n "$progname" -- "$@")
 if [ $? != 0 ] ; then echo "Error in command line arguments." >&2 ; usage; exit 1 ; fi
 eval set -- "$OPTS"
@@ -79,11 +86,12 @@ while true; do
       -h | --help )         usage; exit; ;;
       -V | --version )      echo $VERSION; exit ;;
       -v | --verbose )      verbose=$((verbose + 1)); shift; ;;
+      -n | --dryrun )       dryrun=1; verbose=1; shift; ;;
       -s | --server )       HOST="$2"; shift; shift; ;;
       -p | --port )         PORT="$2"; shift; shift; ;;
       -u | --user )         USER="$2"; shift; shift; ;;
       -d | --database )     DB="$2"; shift; shift; ;;
-      -o | --output )       OUTPUT="-o $2"; shift; shift ;;
+      -o | --output )       OUTPUT="$2"; shift; shift ;;
       -- )                  shift; break ;;
       * )                   break ;;
     esac
@@ -94,26 +102,32 @@ done
 #    exit 1
 #fi
 
-SQLOPTS="-h $HOST -p $PORT -U $USER $DB"
+SQLOPTS="-h $HOST -p $PORT -U $USER $DB ${OUTPUT:+"-o $OUTPUT"}"
 
 if (( $verbose > 0 )); then
 
     cat << EOM
 verbose=$verbose
+dryrun=$dryrun
 OUTPUT=$OUTPUT
-TMPDIR=$TMPDIR
 BASEDIR=$BASEDIR
 SQLDIR=$SQLDIR
 SQLOPTS=$SQLOPTS
 SQLQUERY=$SQLQUERY
-PLOTTER=$PLOTTER
 EOM
+fi
+
+if [ "$dryrun" == "1" ]; then
+    exit 0
 fi
 
 #=========================================================================
 # Main Application
 #=========================================================================
 
-psql $SQLOPTS -f $SQLQUERY -t -A $OUTPUT
+# Create output directory if needed
+mkdir -p "$(dirname "$OUTPUT")"
+
+psql $SQLOPTS -f $SQLQUERY -t -A 
 
 

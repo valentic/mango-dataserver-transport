@@ -1,7 +1,0 @@
-sqlalchemy
-psycopg2-binary
-pytz
-dateutils
-pillow
-h5py
-schedule

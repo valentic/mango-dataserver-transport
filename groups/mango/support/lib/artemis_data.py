@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 ##########################################################################
 #
@@ -23,10 +23,14 @@
 #   2022-02-06  Todd Valentic
 #               Fix error in saving exposure_time 
 #
+#   2026-02-19  Todd Valentic
+#               Update for Python3
+#
 ##########################################################################
 
 import bz2
 import os
+from pathlib import Path
 import sys
 import struct
 import h5py 
@@ -37,7 +41,7 @@ from PIL import Image, PngImagePlugin
 def as_str(v):
     # Strings from struct are fixed length and 0-padded
     # HDF5 doesn't like that, so trim off zeros
-    return v.rstrip(b'\0')
+    return v.rstrip(b'\0').decode('utf-8')
 
 UnitsCatalog = dict( 
     version             = '', 
@@ -74,7 +78,7 @@ class Snapshot:
             self.metadata.update(kw['metadata'])
 
         version = struct.unpack_from('!B',rawdata)[0]
-        parser = 'parse_version_%d' % version
+        parser = f'parse_version_{version}'
 
         if hasattr(self, parser):
             getattr(self, parser)(rawdata)
@@ -215,9 +219,10 @@ def read(filename, *pos, **kw):
 
     #instrument = filename.split('-')[
 
-    rawdata = open(filename).read()
+    filename = Path(filename)
+    rawdata = filename.read_bytes() 
 
-    if filename.endswith('bz2'):
+    if filename.suffix == '.bz2':
         rawdata = bz2.decompress(rawdata)
 
     return [Snapshot(rawdata, *pos, **kw)]

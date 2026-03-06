@@ -12,6 +12,11 @@
 #
 #   2023-05-05  Todd Valentic
 #               Initial implementation
+#               Release 1.0.0
+#
+#   2026-03-02  Todd Valentic
+#               Update to use uv run
+#               Release 1.0.1
 #
 ##########################################################################
 
@@ -19,22 +24,20 @@ set -o errexit  # abort on nonzero exitstatus
 set -o nounset  # abort on unbound variable
 set -o pipefail # do not hide errors within pipes
 
-VESION=1.0.0
+VESION=1.0.1
 PROJECT=uptime-plot
 
 BASEDIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null 2>&1 && pwd )"
 SQLDIR=$(realpath $BASEDIR/../lib/sql)
 VARDIR=$(realpath $BASEDIR/../var)
 CONTRIBDIR=$(realpath $BASEDIR/../contrib)
-PROJECTDIR=$CONTRIBDIR/$PROJECT
-VENV=$VARDIR/$PROJECT/venv
 
 TMPDIR=$(mktemp --directory)
 trap 'rm -rf "$TMPDIR"' EXIT
 
 SQLQUERY=$SQLDIR/uptime_csv.sql
 CSVFILE=$TMPDIR/uptime.csv
-PLOTTER=$PROJECTDIR/uptime_plot.py
+PLOTTER=uptime_plot
 
 #-------------------------------------------------------------------------
 # Usage function
@@ -126,9 +129,7 @@ fi
 # Main Application
 #=========================================================================
 
-. $VENV/bin/activate
-
 psql $SQLOPTS -f $SQLQUERY -o $CSVFILE
-$PLOTTER $OUTPUT $CSVFILE
+uv run $PLOTTER $OUTPUT $CSVFILE
 
 

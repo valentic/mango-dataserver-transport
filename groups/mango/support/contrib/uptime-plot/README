@@ -1,0 +1,24 @@
+==========================================================================
+MANGO Station Uptime Plot
+==========================================================================
+
+2023-05-06  Todd Valentic
+            Initial implementation
+
+2026-03-02  Todd Valentic
+            Integrate as uv workspace package
+           
+--------------------------------------------------------------------------
+Introduction
+--------------------------------------------------------------------------
+
+This script plots the station uptimes computed from the output of the 
+uptime_csv.sql query found in groups/mango/support/lib/sql. That output
+is a CSV file and is feed as input to this program.
+
+The uptime_plot program is installed with the rest of the transport
+application and can be run as:
+
+    uv run uptime_plot <inputfile>
+
+

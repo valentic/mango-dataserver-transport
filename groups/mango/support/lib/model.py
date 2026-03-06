@@ -19,7 +19,15 @@
 #   2023-02-27  Todd Valentic
 #               Add Level1 processed table
 #
+#   2023-05-06  Todd Valentic
+#               Added Statistics tables
+#
+#   2026-02-20  Todd Valentic
+#               Add ability to set database from environment
+#
 ###########################################################################
+
+import os
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine, Column, ForeignKey, func, Index
@@ -29,8 +37,10 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects import postgresql
 
-#database = 'postgresql://@/mango'
-database = 'postgresql://transport@localhost:15432/mango'
+DEFAULT_URI = 'postgresql://@/mango'
+
+database = os.environ.get("MANGO_DATABASE_URI", DEFAULT_URI)
+
 session = scoped_session(sessionmaker())
 
 Base = declarative_base()
@@ -265,6 +275,23 @@ class FusionData(Base):
 
     def __repr__(self):
         return '<FustionData %s %s >' % (self.product_id, self.timestamp)
+
+#------------------------------------------------------------------------------
+# Statistics Products 
+#------------------------------------------------------------------------------
+
+class StatisticProduct(Base):
+
+    __tablename__ = 'statisticproduct'
+
+    id          = Column(Integer, primary_key=True)
+    name        = Column(String, unique=True)
+    title       = Column(String)
+    label       = Column(String)
+    order       = Column(Integer)
+
+    def __repr__(self):
+        return '<StatisticProduct %s (%s)>' % (self.name,self.id)
 
 #------------------------------------------------------------------------------
 # System 

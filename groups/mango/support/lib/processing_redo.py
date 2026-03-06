@@ -1,8 +1,8 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 ##########################################################################
 #
-#   Reprocess data product 
+#   Reprocess data product
 #
 #   The input file format is a CSV file with the first line being headers:
 #
@@ -21,28 +21,39 @@
 #               Refactor to handle general data products
 #               Strip white space from fields in csv file
 #
+#   2026-02-23  Todd Valentic
+#               Update for Python 3 / DataTransport 3
+#
 ##########################################################################
 
-from processing_base import ProcessingBase
-from Transport import NewsPollMixin
-from Transport import NewsTool
-
-import sys
-import pytz
 import csv
 import datetime
+import sys
+
+from datatransport import NewsPoller, newstool
+
 import model
+from processing_base import ProcessingBase
 
-class ProcessingRedo (ProcessingBase, NewsPollMixin):
 
+class ProcessingRedo(ProcessingBase):
     def __init__(self, argv):
         ProcessingBase.__init__(self, argv)
-        NewsPollMixin.__init__(self, callback=self.process)
+
+    def init(self):
+        ProcessingBase.init(self)
+
+        self.news_poller = NewsPoller(self, callback=self.process)
+        self.main = self.news_poller.main
 
     def process_camera(self, camera, timestamp):
 
-        self.log.info('  - %s %s %s' % \
-            (camera.station.name, camera.instrument.name, timestamp.date()))
+        self.log.info(
+            "  - %s %s %s",
+            camera.station.name,
+            camera.instrument.name,
+            timestamp.date(),
+        )
 
         self.make_products(camera, timestamp, self.formats)
 
@@ -56,32 +67,27 @@ class ProcessingRedo (ProcessingBase, NewsPollMixin):
         station = self.get_station(station_name)
         instrument = self.get_instrument(instrument_name)
 
-        if not station or not instrument:   
+        if not station or not instrument:
             return None
 
         return model.StationInstrument.query.filter_by(
-            station_id=station.id,
-            instrument_id=instrument.id
-            ).first()
-        
+            station_id=station.id, instrument_id=instrument.id
+        ).first()
+
     def process_file(self, filename):
 
-        with open(filename) as csvfile:
-
-            # Manually read first line and trim white space from field names.
-
-            header = [h.strip() for h in csvfile.next().split(',')]
-            reader = csv.DictReader(csvfile, fieldnames=header)
+        with filename.open(newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
 
             for row in reader:
+                station = row["station"]
+                instrument = row["instrument"]
+                timestamp = row["timestamp"]
 
-                station = row['station'].strip()
-                instrument = row['instrument'].strip()
-                timestamp = row['timestamp'].strip()
-
-                camera = self.get_stationinstrument(station, instrument) 
-                timestamp = datetime.datetime.strptime(timestamp, '%Y-%m-%d')
-                timestamp = timestamp.replace(tzinfo=pytz.utc)
+                camera = self.get_stationinstrument(station, instrument)
+                timestamp = datetime.datetime.strptime(timestamp, "%Y-%m-%d").replace(
+                    tzinfo=datetime.UTC
+                )
 
                 self.process_camera(camera, timestamp)
 
@@ -90,15 +96,15 @@ class ProcessingRedo (ProcessingBase, NewsPollMixin):
 
     def process(self, message):
 
-        self.log.info('Processing start')
+        self.log.info("Processing start")
 
-        filenames = NewsTool.saveFiles(message)
+        filenames = newstool.save_files(message)
 
         for filename in filenames:
             self.process_file(filename)
 
-        self.log.info('Processing finished')
+        self.log.info("Processing finished")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     ProcessingRedo(sys.argv).run()
-

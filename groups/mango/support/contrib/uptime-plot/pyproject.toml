@@ -1,0 +1,15 @@
+[project]
+name = "uptime-plot"
+version = "1.0.1"
+description = "MANGO station uptime plot"
+readme = "README"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "numpy>=2.2.6",
+    "pandas>=2.3.2",
+    "seaborn>=0.13.2",
+]
+
+[project.scripts]
+    uptime_plot = "uptime_plot:main"

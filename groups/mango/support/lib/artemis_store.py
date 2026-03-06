@@ -1,8 +1,8 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 ##########################################################################
 #
-#   Store Artemis snapshots into database 
+#   Store Artemis snapshots into database
 #
 #   2021-08-10  Todd Valentic
 #               Initial implementation
@@ -10,90 +10,89 @@
 #   2022-03-12  Todd Valentic
 #               Use stationinstrument junction table
 #
+#   2026-02-23  Todd Valentic
+#               Update for Python 3 / DataTransport 3
+#
 ##########################################################################
 
+import datetime
+import sys
+
+import artemis_data
+import model
 from store_base import StoreBase
 
-import model
-import artemis_data
-
-import sys
-import os
-import datetime
-import pytz
 
 class Store(StoreBase):
-
     def __init__(self, *pos, **kw):
         StoreBase.__init__(self, model, artemis_data, *pos, **kw)
 
-    def getStation(self, name):
+    def get_station(self, name):
 
-        match = {}
-        match['name'] = name
-        
+        match = {
+            "name": name
+        }
+
         return self.lookup(match, model.Station)
 
-    def getDevice(self, name):
-        
-        match = {}
-        match['name'] = name
+    def get_device(self, name):
+
+        match = {
+            "name": name
+        }
 
         return self.lookup(match, model.Device)
 
-    def getInstrument(self, name):
-        
-        match = {}
-        match['name'] = name
+    def get_instrument(self, name):
+
+        match = {
+            "name": name
+        }
 
         return self.lookup(match, model.Instrument)
 
-    def getStationInstrument(self, stationName, instrumentName):
+    def get_stationinstrument(self, station_name, instrument_name):
 
-        station = self.getStation(stationName)
-        instrument = self.getInstrument(instrumentName)
+        station = self.get_station(station_name)
+        instrument = self.get_instrument(instrument_name)
 
-        match = {}
-        match['station_id'] = station.id
-        match['instrument_id'] = instrument.id
+        match = {
+            "station_id": station.id,
+            "instrument_id": instrument.id
+        }
 
         return self.lookup(match, model.StationInstrument)
 
-    def getTimestamp(self, unixtime):
-        
-        timestamp = datetime.datetime.fromtimestamp(unixtime)
-        timestamp = timestamp.replace(tzinfo=pytz.utc)
+    def get_timestamp(self, unixtime):
 
-        return timestamp
+        return datetime.datetime.fromtimestamp(unixtime, tz=datetime.UTC)
 
-    def updateRecord(self, snapshot, *pos, **kw):
+    def update_record(self, snapshot, *pos, **kw):
 
         values = snapshot.metadata
 
-        timestamp = self.getTimestamp(values['start_time'])
-        stationinstrument = self.getStationInstrument(values['station'], values['instrument'])
-        station = self.getStation(values['station'])
-        device = self.getDevice(values['device_name'])
-        instrument = self.getInstrument(values['instrument'])
+        timestamp = self.get_timestamp(values["start_time"])
+        stationinstrument = self.get_stationinstrument(
+            values["station"], values["instrument"]
+        )
+        device = self.get_device(values["device_name"])
 
-        values['timestamp'] = timestamp 
-        values['stationinstrument_id'] = stationinstrument.id
-        values['device_id'] = device.id
+        values["timestamp"] = timestamp
+        values["stationinstrument_id"] = stationinstrument.id
+        values["device_id"] = device.id
 
-        match = ['timestamp', 'stationinstrument_id']
+        match = ["timestamp", "stationinstrument_id"]
 
         if not self.update(values, model.Image, primary_keys=match):
-            self.reportError('Failed to update database')
+            self.reportError("Failed to update database")
             return False
 
         return True
 
-if __name__ == '__main__':
-    
+
+if __name__ == "__main__":
     filename = sys.argv[1]
 
-    store = Store(exitOnError=True)
+    store = Store(exit_on_error=True)
 
     store.process(filename)
-
-

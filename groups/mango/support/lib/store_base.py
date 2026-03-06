@@ -7,69 +7,70 @@
 #   2020-10-14  Todd Valentic
 #               Initial implementation
 #
+#   2026-02-23  Todd Valentic
+#               Update for Python 3 / DataTransport 3
+#
 #####################################################################
 
 import sys
-import os
 
 from sqlalchemy.orm import class_mapper
 
-class StoreBase:
 
-    def __init__(self, model, dataHandler, log=None, exitOnError=True):
+class StoreBase:
+    def __init__(self, model, data_handler, log=None, exit_on_error=True):
 
         if not log:
-            self.setupBasicLogger()
+            self.setup_basic_logger()
         else:
             self.log = log
 
         self.model = model
-        self.dataHandler = dataHandler
-        self.exitOnError = exitOnError
+        self.data_handler = data_handler
+        self.exit_on_error = exit_on_error
 
-    def setupBasicLogger(self):
+    def setup_basic_logger(self):
 
         import logging
 
         self.log = logging
         logging.basicConfig(level=logging.INFO)
 
-    def reportError(self, msg):
-        self.log.error('Filename: %s' % self.filename)
-        if self.exitOnError:
+    def report_error(self, msg):
+        self.log.error("Filename: %s", self.filename)
+        if self.exit_on_error:
             self.log.exception(msg)
             raise RuntimeError(msg)
         else:
             self.log.error(msg)
 
-    def process(self,filename,opts=None,*pos,**kw):
-        
+    def process(self, filename, opts=None, *pos, **kw):
+
         self.filename = filename
 
         try:
-            snapshots = self.dataHandler.read(filename,opts=opts)
-        except:
-            self.reportError('Problem loading data')
+            snapshots = self.data_handler.read(filename, opts=opts)
+        except Exception: # noqa: BLE001
+            self.report_error("Problem loading data")
             return False
 
         for snapshot in snapshots:
-            self.updateRecord(snapshot,*pos,**kw)
+            self.update_record(snapshot, *pos, **kw)
 
         return True
 
-    def updateRecord(self,snapshot,*pos,**kw):
+    def update_record(self, snapshot, *pos, **kw):
         # Filled in by child class
         pass
 
-    def lookup(self,match,table):
-        instance = table.query.filter_by(**match).first()
-        return instance
+    def lookup(self, match, table):
+        return table.query.filter_by(**match).first()
 
-    def lookupOrAdd(self,match,table):
+    def lookupOrAdd(self, match, table):
         instance = table.query.filter_by(**match).first()
 
         if not instance:
-            self.log.info('Added %s: %s' % (table,match))
+            self.log.info("Added %s: %s", table, match)
             instance = table(**match)
             self.model.add(instance)
 
@@ -77,50 +78,42 @@ class StoreBase:
                 self.model.commit()
             except:
                 self.model.rollback()
-                self.log.error('Problem adding')
-                self.log.info('  - instance: %s' % instance)
-                self.log.info('  - match: %s' % match)
+                self.log.error("Problem adding")
+                self.log.info("  - instance: %s", instance)
+                self.log.info("  - match: %s", match)
                 raise
 
         return instance
 
-    def update(self,data,table,primary_keys=None):
+    def update(self, data, table, primary_keys=None):
 
         attrs = table.__dict__.keys()
-        values = dict((k,v) for k,v in data.items() if k in attrs)
+        values = {k: v for k, v in data.items() if k in attrs}
 
         if not primary_keys:
             primary_keys = [key.name for key in class_mapper(table).primary_key]
 
-        match = dict((key,values[key]) for key in primary_keys)
+        match = {key: values[key] for key in primary_keys}
 
         instance = table.query.filter_by(**match).first()
 
         if instance:
-            for k,v in values.iteritems():
-                setattr(instance,k,v)
-            prefix = 'Updating'
+            for k, v in values.items():
+                setattr(instance, k, v)
+            prefix = "Updating"
         else:
             instance = table(**values)
             self.model.add(instance)
-            prefix = 'Adding'
+            prefix = "Adding"
 
-        self.log.info('%s %s' % (prefix,match))
+        self.log.info("%s %s", prefix, match)
 
         try:
             self.model.commit()
-        except:
+        except Exception:
             self.model.rollback()
-            self.log.exception('Failed to commit')
+            self.log.exception("Failed to commit")
             return False
 
         return True
-
-if __name__ == '__main__':
-
-    filename = sys.argv[1]
-
-    store = Store(exitOnError=True)
-
-    store.process(filename)
 

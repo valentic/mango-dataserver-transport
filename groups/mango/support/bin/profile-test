@@ -1,0 +1,3 @@
+export PYTHONPATH=/opt/transport/groups/mango/support/lib
+export MANGO_DATABASE_URI=postgresql://valentic@localhost:15432/mango-test
+
