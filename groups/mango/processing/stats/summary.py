@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 ##########################################################################
 #
@@ -10,89 +10,95 @@
 #   2022-07-09  Todd Valentic
 #               Add atStart option
 #
+#   2026-02-26  Todd Valentic
+#               Update for Python 3 / DataTransport 3
+#
 ##########################################################################
 
-from Transport  import ProcessClient, NewsPostMixin
-
-import sys
-import schedule
-import commands 
 import fnmatch
+import subprocess
+import sys
 
-class DailySummary (ProcessClient, NewsPostMixin):
+import schedule
+from datatransport import NewsPoster, ProcessClient
 
-    def __init__(self, argv):
-        ProcessClient.__init__(self,argv)
-        NewsPostMixin.__init__(self)
 
+class DailySummary(ProcessClient):
+    def init(self):
+
+        self.news_poster = NewsPoster(self)
         self.scheduler = schedule.Scheduler()
 
-        self.report_at = self.get('report.at','17:00:00')
-        self.report_cmd = self.get('report.cmd')
-        self.report_at_start = self.getboolean('report.at_start',False)
+        self.report_at = self.config.get("report.at", "17:00:00")
+        self.report_cmd = self.config.get("report.cmd")
+        self.report_at_start = self.config.get_boolean("report.at_start", False)
 
         if not self.report_cmd:
-            self.abort('No report command specified')
+            self.abort("No report command specified")
 
     def process(self):
-  
-        status, output = commands.getstatusoutput(self.report_cmd)
+
+        status, output = subprocess.getstatusoutput(self.report_cmd)
 
         if status != 0:
-            self.log.error('Problem running report command:')
-            self.log.error('  cmd=%s' % self.report_cmd)
-            self.log.error('  status=%s' % status)
-            self.log.error('  output=%s' % output)
+            self.log.error("Problem running report command:")
+            self.log.error("  cmd=%s", self.report_cmd)
+            self.log.error("  status=%s", status)
+            self.log.error("  output=%s", output)
             return
-        
-        reportDate = self.currentTime().strftime('%b %d, %Y')
 
-        LEN=90
+        report_date = self.now().strftime("%b %d, %Y")
 
-        msg = '\n'.join([
-            "",
-            "="*LEN,
-            "MANGO Daily Summary Report for %s" % reportDate,
-            "="*LEN,
-            "",
-            "-"*LEN,
-            output.rstrip(),
-            "-"*LEN,
-            "",
-            "Generated at %s" % self.currentTime().strftime('%b %d, %Y %H:%M:%S')
-            ])
+        page_width = 90
 
-        self.newsPoster.setSubject('Report for %s' % reportDate)
-        self.newsPoster.postText(msg)
+        hrule_bold = "=" * page_width
+        hrule = "-" * page_width
+        title = f" MANGO Daily Summary Report for {report_date} "
+
+        msg = f"""
+
+{hrule_bold}
+{title}
+{hrule_bold}
+
+{hrule}
+{output.rstrip()}
+{hrule}
+
+Generated at {self.now().strftime("%b %d, %Y %H:%M:%S %Z")}
+        """
+
+        self.news_poster.set_subject(f"Report for {report_date}")
+        self.news_poster.post_text(msg)
 
         self.log.info(msg)
 
     def schedule_task(self, report_at, cmd):
 
-        if fnmatch.fnmatch(report_at, ':??'):
+        if fnmatch.fnmatch(report_at, ":??"):
             self.scheduler.every(1).minutes.at(report_at).do(cmd)
-        elif fnmatch.fnmatch(report_at, '??:??'):
-                self.scheduler.every(1).hours.at(report_at).do(cmd)
-        elif fnmatch.fnmatch(report_at, '??:??:??'):
+        elif fnmatch.fnmatch(report_at, "??:??"):
+            self.scheduler.every(1).hours.at(report_at).do(cmd)
+        elif fnmatch.fnmatch(report_at, "??:??:??"):
             self.scheduler.every(1).day.at(report_at).do(cmd)
 
-    def run(self):
+    def main(self):
 
-        self.log.info('Running')
+        self.log.info("Running")
 
         self.schedule_task(self.report_at, self.process)
 
         if self.report_at_start:
             self.process()
-        
+
         while self.wait(1):
             try:
                 self.scheduler.run_pending()
-            except:
-                self.log.exception('Error detected')
+            except Exception:
+                self.log.exception("Error detected")
 
-        self.log.info('Stopping')
+        self.log.info("Stopping")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     DailySummary(sys.argv).run()
-
