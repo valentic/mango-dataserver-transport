@@ -1,0 +1,28 @@
+[project]
+name = "mangodata"
+version = "2.0.0"
+description = "MANGO data server processing"
+readme = "README.rst"
+requires-python = ">=3.12"
+dependencies = [
+    "datatransport>=3.0.25",
+    "h5py>=3.14.0",
+    "mangonetwork-raw",
+    "pillow>=12.1.1",
+    "psycopg2-binary>=2.9.11",
+    "pytz>=2025.2",
+    "schedule>=1.2.2",
+    "sqlalchemy<2",
+    "uptime-plot",
+]
+
+[tool.uv.sources]
+uptime-plot = { workspace = true }
+mangonetwork-raw = { git = "https://github.com/valentic/raw-image-processing", rev = "tav" }
+
+[tool.uv.workspace]
+members = [
+    "groups/mango/support/contrib/uptime-plot",
+]
+
+

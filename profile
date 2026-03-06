@@ -1,0 +1,2 @@
+export DATA_TRANSPORT_PATH=$PWD
+
