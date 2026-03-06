@@ -1,0 +1,9 @@
+[DEFAULT]
+
+autostart: false
+
+sql.user:       valentic
+sql.db:         mango-test
+
+path.project:   /data/transport/test/%(project)s
+
