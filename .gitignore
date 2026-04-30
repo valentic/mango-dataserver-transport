@@ -4,6 +4,7 @@ support/keys
 *.org
 *.bak
 .astropy/
+.local/
 
 
 # Byte-compiled / optimized / DLL files
