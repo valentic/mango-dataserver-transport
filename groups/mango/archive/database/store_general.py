@@ -22,20 +22,30 @@ import sys
 import artemis_store
 from datatransport import NewsPoller, ProcessClient, newstool
 
-DataProcessor = {
-    "greenline": artemis_store.Store(),
-    "redline": artemis_store.Store(),
-}
+#DataProcessor = {
+#    "greenline": artemis_store.Store(),
+#    "redline": artemis_store.Store(),
+#}
 
-DataFiles = {
-    "greenline": ["*.dat.bz2"],
-    "redline": ["*.dat.bz2"],
-}
+#DataFiles = {
+#    "greenline": ["*.dat.bz2"],
+#    "redline": ["*.dat.bz2"],
+#}
 
 
 class StoreDB(ProcessClient):
     def __init__(self, args):
         ProcessClient.__init__(self, args)
+
+        self.data_stores = {
+            "greenline": artemis_store.Store(log=self.log),
+            "redline": artemis_store.Store(log=self.log),
+        }
+
+        self.data_file_specs = {
+            "greenline": ["*.dat.bz2"],
+            "redline": ["*.dat.bz2"],
+        }
 
     def init(self):
         ProcessClient.init(self)
@@ -54,7 +64,7 @@ class StoreDB(ProcessClient):
         datatype = newsgroup[-1]
         location = newsgroup[1]
         sitename = newsgroup[3]
-        store = DataProcessor[datatype]
+        store = self.data_stores[datatype]
         timestamp = newstool.message_date(message)
 
         self.log.info("%s - %s - %s", sitename, datatype, timestamp)
@@ -68,7 +78,7 @@ class StoreDB(ProcessClient):
         }
 
         for filename in newstool.save_files(message):
-            if self.match_filename(filename, DataFiles[datatype]):
+            if self.match_filename(filename, self.data_file_specs[datatype]):
                 store.process(filename, opts=opts)
             os.remove(filename)
 
