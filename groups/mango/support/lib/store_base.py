@@ -10,6 +10,9 @@
 #   2026-02-23  Todd Valentic
 #               Update for Python 3 / DataTransport 3
 #
+#   2026-04-39  Todd Valentic
+#               Only show adding/updating message in debug log
+#
 #####################################################################
 
 import sys
@@ -106,7 +109,7 @@ class StoreBase:
             self.model.add(instance)
             prefix = "Adding"
 
-        self.log.info("%s %s", prefix, match)
+        self.log.debug("%s %s", prefix, match)
 
         try:
             self.model.commit()
