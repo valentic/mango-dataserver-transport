@@ -5,7 +5,7 @@ description = "MANGO data server processing"
 readme = "README.rst"
 requires-python = ">=3.12"
 dependencies = [
-    "datatransport>=3.0.25",
+    "datatransport>=3.0.30",
     "h5py>=3.14.0",
     "mangonetwork-raw",
     "pillow>=12.1.1",
@@ -18,7 +18,7 @@ dependencies = [
 
 [tool.uv.sources]
 uptime-plot = { workspace = true }
-mangonetwork-raw = { git = "https://github.com/valentic/raw-image-processing", rev = "tav" }
+mangonetwork-raw = { git = "https://github.com/valentic/raw-image-processing", tag = "v1.2.9" }
 
 [tool.uv.workspace]
 members = [
