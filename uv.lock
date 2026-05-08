@@ -183,7 +183,7 @@ wheels = [
 
 [[package]]
 name = "datatransport"
-version = "3.0.30"
+version = "3.0.31"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dateutil" },
@@ -195,9 +195,9 @@ dependencies = [
     { name = "standard-nntplib" },
     { name = "watchdog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/65/a4/40434b88baa3c70c0b9a4e6c577f9a3ce5862243efd2f8fec5ba16009d05/datatransport-3.0.30.tar.gz", hash = "sha256:14733c6abc78b5f7b5b348e96577290a80a9aa1f578bf664a6d90ebabf53397f", size = 363493, upload-time = "2026-04-29T23:31:04.312Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/be/eaa69b65524adbfef5fb574d7a27c73f832f25088f4076ab2379a5634fe0/datatransport-3.0.31.tar.gz", hash = "sha256:38b5da794ae33a4c86452241368593593e3ac147d791af62d4b45e5e6a82bd36", size = 364580, upload-time = "2026-05-08T21:03:32.151Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/1d/c0656fdac7680541a1a1d58f31f9d644292f73fa425b8600796cee7f78f0/datatransport-3.0.30-py3-none-any.whl", hash = "sha256:88b3403d38e9132e469863968744117b74e67ef21c55716cdbc4d8b477fdafd7", size = 159480, upload-time = "2026-04-29T23:31:06.133Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/98/f049a8ec9244e3f9f3183e000d51ab6977c4b3913baa75e672b997e2ad6e/datatransport-3.0.31-py3-none-any.whl", hash = "sha256:d1184014e597c6d2d99e46d10a967d004808056792261cbe0b0d005b103f1f89", size = 159699, upload-time = "2026-05-08T21:03:33.855Z" },
 ]
 
 [[package]]
@@ -474,7 +474,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datatransport", specifier = ">=3.0.30" },
+    { name = "datatransport", specifier = ">=3.0.31" },
     { name = "h5py", specifier = ">=3.14.0" },
     { name = "mangonetwork-raw", git = "https://github.com/valentic/raw-image-processing?tag=v1.2.9" },
     { name = "pillow", specifier = ">=12.1.1" },
