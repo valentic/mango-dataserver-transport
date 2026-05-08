@@ -13,29 +13,23 @@
 #   2026-02-24  Todd Valentic
 #               Updated for Python 3 / DataTransport 3
 #
+#   2026-05-08  Todd Valenti
+#               Retry database ops on connection error 
+#
 ########################################################################
 
 import fnmatch
 import os
-import sys
+import sqlalchemy
 
 import artemis_store
+import model
+
 from datatransport import NewsPoller, ProcessClient, newstool
 
-#DataProcessor = {
-#    "greenline": artemis_store.Store(),
-#    "redline": artemis_store.Store(),
-#}
-
-#DataFiles = {
-#    "greenline": ["*.dat.bz2"],
-#    "redline": ["*.dat.bz2"],
-#}
-
-
 class StoreDB(ProcessClient):
-    def __init__(self, args):
-        ProcessClient.__init__(self, args)
+
+    def init(self):
 
         self.data_stores = {
             "greenline": artemis_store.Store(log=self.log),
@@ -46,14 +40,19 @@ class StoreDB(ProcessClient):
             "greenline": ["*.dat.bz2"],
             "redline": ["*.dat.bz2"],
         }
-
-    def init(self):
-        ProcessClient.init(self)
-
         self.news_poller = NewsPoller(self, callback=self.process)
         self.main = self.news_poller.main
 
     def process(self, message):
+
+        try:
+            self.do_process(message)
+        except sqlalchemy.exc.OperationalError:
+            model.rollback()
+            self.log.error("Problem connecting to database, retrying...")
+            raise newstool.ProcessRetry
+
+    def do_process(self, message):
 
         # newsgroup: transport.mango.station.<sitename>.outbound.<instrument>
         #                0       1      2         3         4         5
@@ -92,4 +91,4 @@ class StoreDB(ProcessClient):
 
 
 if __name__ == "__main__":
-    StoreDB(sys.argv).run()
+    StoreDB().run()
