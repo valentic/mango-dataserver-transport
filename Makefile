@@ -12,6 +12,10 @@
 #	2026-04-30	Todd Valentic
 #				Initial implementation
 #
+#	2026-05-08	Todd Valentic
+#				Add PYTHONPYCACHEPREFIX directory 
+#				Add start/stop targets
+#
 ##########################################################################
 
 export DATA_TRANSPORT_PATH ?= /opt/transport
@@ -20,7 +24,8 @@ export UV_CACHE_DIR = $(LOCAL_DIR)/cache
 export UV_PYTHON_INSTALL_DIR = $(LOCAL_DIR)/python
 export UV_PYTHON_BIN_DIR = $(LOCAL_DIR)/bin
 export UV_PROJECT_ENVIRONMENT = $(DATA_TRANSPORT_PATH)/.venv
-export PATH := $(UV_PYTHON_BIN_DIR):$(PATH)
+export PYTHONPYCACHEPREFIX = $(LOCAL_DIR)/pycache
+export PATH := $(UV_PYTHON_BIN_DIR):$(UV_PROJECT_ENVIRONMENT)/bin:$(PATH)
 
 .PHONY:	help setup
 
@@ -29,6 +34,8 @@ help:
 	@echo "Targets:"
 	@echo
 	@echo "  setup  Setup python and virtual env"
+	@echo "  start  Startup the transport server"
+	@echo "  stop   Shutdown the transport server"
 	@echo "  clean  Remove cache, venv"
 	@echo "  help   List makefile target commands"
 	@echo
@@ -39,12 +46,19 @@ setup:
 	@mkdir -p $(UV_CACHE_DIR) 
 	@mkdir -p $(UV_PYTHON_INSTALL_DIR) 
 	@mkdir -p $(UV_PYTHON_BIN_DIR)
+	@mkdir -p $(PYTHONPYCACHEPREFIX)
 
 	@uv python install 
 	@uv venv --clear
 	@uv sync
-	@restorecon -r /opt/transport/.venv/bin	
-	@restorecon -r /opt/transport/.local
+	@restorecon -r $(DATA_TRANSPORT_PATH)/.venv/bin	
+	@restorecon -r $(DATA_TRANSPORT_PATH)/.local
+
+start:
+	@exec transportd		
+
+stop:
+	@transportctl server stop
 
 clean:
 	@rm -rf $(LOCAL_DIR)
