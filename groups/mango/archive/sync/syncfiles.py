@@ -44,7 +44,9 @@ from datatransport.utilities import PatternTemplate, datefunc
 class DataFile:
     # TBD - expand to be a factory for multiple data products
 
-    def __init__(self, entry):
+    def __init__(self, entry, log):
+
+        self.log = log
 
         self.entry = entry
 
@@ -85,6 +87,8 @@ class DataFile:
         )
 
         instance = model.FusionData.query.filter_by(**match).first()
+
+        self.log.debug("Checking %s: %s", self.entry, instance is not None)
 
         return instance is not None
 
@@ -243,7 +247,7 @@ class Fetcher(ProcessClient):
 
         for entry in output:
             try:
-                datafile = DataFile(entry)
+                datafile = DataFile(entry, self.log)
             except (AttributeError, ValueError) as err:
                 self.log.error("Failed to process entry: %s", entry)
                 self.log.error(err)
