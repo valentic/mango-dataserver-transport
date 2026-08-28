@@ -128,7 +128,7 @@ class FileGroup(ConfigComponent):
         headers = {}
 
         if self.enable_serial_num:
-            headers["X-datatransport-SerialNum"] = str(uuid.uuid4())
+            headers["X-Transport-SerialNum"] = str(uuid.uuid4())
 
         self.posters[newsgroup].post([pathname], date=timestamp, headers=headers)
 
