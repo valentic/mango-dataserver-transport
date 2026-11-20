@@ -1,2 +1,3 @@
 export PYTHONPATH=/opt/transport/groups/mango/support/lib
+export MANGO_DATABASE_URI=postgresql://transport@localhost:15432/mango 
 
