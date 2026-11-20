@@ -77,6 +77,18 @@ def remove():
 # Stations
 #------------------------------------------------------------------------------
 
+class Project(Base):
+
+    __tablename__ = 'project'
+
+    id          = Column(Integer, primary_key=True)
+    name        = Column(String, unique=True)
+    label       = Column(String)
+
+    def __repr__(self):
+        return '<Project %s (%s)>' % \
+            (self.name,self.id)
+
 class Station(Base):
 
     __tablename__ = 'station'
@@ -84,6 +96,7 @@ class Station(Base):
     id          = Column(Integer, primary_key=True)
     name        = Column(String, unique=True)
     label       = Column(String)
+    project_id  = Column(Integer, ForeignKey('project.id'))
     model_id    = Column(Integer, ForeignKey('system_model.id'))
     status_id   = Column(Integer, ForeignKey('status.id'))
 
